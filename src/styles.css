@@ -1,0 +1,2007 @@
+/* ======= Designer app styles — "Canvas" ======= */
+
+/* ============================================================
+   UI tokens — keep all chrome on a single scale.
+   Sizes:   8 / 12 / 16 / 20 / 24 / 28 / 32 / 36 / 44
+   Radii:   4 (chip) · 6 (control) · 8 (surface) · 10 (floating)
+   Icons:   12 (inline) · 14 (compact action) · 16 (primary)
+   Type:    11 (eyebrow / numeric) · 12 (body / control) · 13 (title)
+   ============================================================ */
+:root {
+  --ui-h-sm: 24px;       /* compact controls (toggle-pill button, align-grid) */
+  --ui-h-md: 28px;       /* default controls (inputs, icon-btn, toggle groups) */
+  --ui-h-lg: 32px;       /* tool dock buttons */
+  --ui-h-row: 28px;      /* list rows (layers, pages) */
+
+  --ui-r-chip: 4px;
+  --ui-r-ctrl: 6px;
+  --ui-r-surface: 8px;
+  --ui-r-floating: 10px;
+
+  --ui-pad-panel-x: 12px;
+  --ui-pad-section-y: 10px;
+  --ui-gap-row: 6px;     /* vertical rhythm inside a section */
+  --ui-gap-col: 6px;     /* horizontal gap between fields in a row */
+}
+
+:root {
+  --accent: #1D4ED8;       /* brand accent — blue */
+  --accent-soft: rgba(29, 78, 216, 0.15);
+  --select: var(--accent);
+
+  /* App chrome tokens (light) */
+  --app-bg: #f5f5f5;
+  --app-chrome: #fafafa;
+  --app-panel: #ffffff;
+  --app-panel-2: #fafafa;
+  --app-border: #e5e5e5;
+  --app-border-strong: #d4d4d4;
+  --app-fg: #171717;
+  --app-fg-2: #525252;
+  --app-fg-3: #a3a3a3;
+  --app-hover: #f0f0f0;
+  --app-active: #e8e8e8;
+  --canvas-bg: #e5e5e5;       /* light mode canvas */
+  --ruler-bg: #fafafa;
+  --ruler-fg: #a3a3a3;
+  --ruler-line: #e5e5e5;
+  --toolbar-bg: #ffffff;
+  --toolbar-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --topbar-bg: #ffffff;
+  --tab-inactive: #f5f5f5;
+  --tab-active: #ffffff;
+  --traffic-red: #ff5f57;
+  --traffic-yellow: #febc2e;
+  --traffic-green: #28c840;
+
+  /* Focus ring — applied to controls on :focus-visible. Sits inside the
+     control's border-radius so it never feels detached. */
+  --ui-focus-ring: 0 0 0 2px var(--app-panel), 0 0 0 3px var(--accent);
+}
+
+[data-theme="dark"] {
+  --accent: #3b82f6;
+  --accent-soft: rgba(59, 130, 246, 0.18);
+
+  --app-bg: #0a0a0a;
+  --app-chrome: #171717;
+  --app-panel: #1c1c1c;
+  --app-panel-2: #171717;
+  --app-border: #2a2a2a;
+  --app-border-strong: #3a3a3a;
+  --app-fg: #fafafa;
+  --app-fg-2: #a3a3a3;
+  --app-fg-3: #737373;
+  --app-hover: #262626;
+  --app-active: #2f2f2f;
+  --canvas-bg: #1a1a1a;
+  --ruler-bg: #171717;
+  --ruler-fg: #737373;
+  --ruler-line: #2a2a2a;
+  --toolbar-bg: #1c1c1c;
+  --toolbar-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset;
+  --topbar-bg: #171717;
+  --tab-inactive: #0a0a0a;
+  --tab-active: #1c1c1c;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  height: 100vh; width: 100vw;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  color: var(--app-fg);
+  background: #000;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { width: 100vw; height: 100vh; }
+
+button { font-family: inherit; color: inherit; }
+input { font-family: inherit; color: inherit; }
+
+/* ============================================================
+   macOS window shell
+   ============================================================ */
+.os-window {
+  width: 100vw; height: 100vh;
+  background: var(--app-chrome);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.os-titlebar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  background: var(--app-chrome);
+  border-bottom: 1px solid var(--app-border);
+  flex-shrink: 0;
+}
+
+.traffic-lights { display: flex; gap: 8px; padding: 0 6px 0 2px; }
+.traffic { width: 12px; height: 12px; border-radius: 999px; }
+.traffic.r { background: var(--traffic-red); }
+.traffic.y { background: var(--traffic-yellow); }
+.traffic.g { background: var(--traffic-green); }
+[data-theme="dark"] .traffic { opacity: 0.95; }
+
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding-top: 6px;
+  overflow: hidden;
+}
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px;
+  height: 28px;
+  font-size: 12px;
+  color: var(--app-fg-2);
+  border-radius: 6px 6px 0 0;
+  background: var(--tab-inactive);
+  border: 1px solid transparent;
+  border-bottom: none;
+  cursor: pointer;
+  min-width: 100px;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab.active {
+  background: var(--tab-active);
+  color: var(--app-fg);
+  border-color: var(--app-border);
+}
+.tab .tab-close {
+  width: 18px; height: 18px; border-radius: var(--ui-r-chip);
+  display: flex; align-items: center; justify-content: center;
+  margin-left: auto;
+  opacity: 0; flex-shrink: 0;
+  color: var(--app-fg-3);
+  transition: opacity var(--dur-fast, 120ms);
+}
+.tab:hover .tab-close, .tab.active .tab-close { opacity: 1; }
+.tab .tab-close:hover { background: var(--app-hover); color: var(--app-fg); }
+
+.tab-add {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--app-fg-3);
+  cursor: pointer;
+  border-radius: var(--ui-r-ctrl);
+  flex-shrink: 0;
+}
+.tab-add:hover { background: var(--app-hover); color: var(--app-fg); }
+
+/* ============================================================
+   Top bar (file + controls)
+   ============================================================ */
+.topbar {
+  height: 44px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--app-border);
+  flex-shrink: 0;
+}
+.topbar .logo {
+  width: 24px; height: 24px; border-radius: var(--ui-r-ctrl);
+  background: var(--accent);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+.topbar .file-name {
+  font-size: 13px; font-weight: 500; color: var(--app-fg);
+  padding: 0 8px;
+  height: 28px;
+  border-radius: var(--ui-r-ctrl);
+  cursor: text;
+  background: transparent;
+  border: 1px solid transparent;
+  outline: none;
+  min-width: 120px;
+  max-width: 240px;
+}
+.topbar .file-name:hover { background: var(--app-hover); }
+.topbar .file-name:focus { background: var(--app-hover); border-color: var(--accent); }
+
+.topbar .breadcrumb-sep {
+  color: var(--app-fg-3);
+  font-size: 13px;
+  font-weight: 300;
+  padding: 0 2px;
+}
+.topbar .breadcrumb {
+  font-size: 13px;
+  color: var(--app-fg-2);
+  font-weight: 500;
+  padding: 0 6px;
+  height: 28px;
+  display: flex; align-items: center;
+  border-radius: var(--ui-r-ctrl);
+}
+.topbar .breadcrumb:hover { background: var(--app-hover); color: var(--app-fg); }
+
+.topbar .spacer { flex: 1; }
+
+/* A 1px vertical rule for grouping topbar controls. */
+.topbar-divider {
+  width: 1px; height: 20px;
+  background: var(--app-border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.design-proto-toggle {
+  display: flex;
+  background: var(--app-panel-2);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-surface);
+  padding: 2px;
+  height: var(--ui-h-md);
+}
+.design-proto-toggle button {
+  border: none;
+  background: transparent;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--app-fg-2);
+  border-radius: var(--ui-r-ctrl);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.design-proto-toggle button:hover { color: var(--app-fg); }
+.design-proto-toggle button.active {
+  background: var(--app-panel);
+  color: var(--app-fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.zoom-ctrl {
+  display: flex; align-items: center; gap: 0;
+  background: var(--app-panel-2);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-surface);
+  padding: 2px;
+  height: var(--ui-h-md);
+}
+.zoom-ctrl button {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  border-radius: var(--ui-r-chip);
+  cursor: pointer;
+  color: var(--app-fg-2);
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.zoom-ctrl button:hover { background: var(--app-hover); color: var(--app-fg); }
+.zoom-ctrl .value {
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 44px;
+  text-align: center;
+  color: var(--app-fg);
+  cursor: pointer;
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+.zoom-ctrl .value:hover { color: var(--accent); }
+
+.icon-btn {
+  width: var(--ui-h-md); height: var(--ui-h-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--ui-r-ctrl); border: none; background: transparent;
+  color: var(--app-fg-2); cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease),
+              color var(--dur-fast, 120ms) var(--ease-out, ease);
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--app-hover); color: var(--app-fg); }
+.icon-btn.active { background: var(--accent); color: white; }
+.icon-btn:focus-visible { box-shadow: var(--ui-focus-ring); outline: none; }
+
+.share-btn {
+  height: var(--ui-h-md); padding: 0 14px;
+  background: var(--accent);
+  color: white; border: none; border-radius: var(--ui-r-surface);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: filter var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.share-btn:hover { filter: brightness(1.08); }
+.share-btn:focus-visible { box-shadow: var(--ui-focus-ring); outline: none; }
+
+.avatar {
+  width: 26px; height: 26px; border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: white;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600;
+  border: 2px solid var(--topbar-bg);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Main body layout
+   ============================================================ */
+.body-area { display: flex; flex: 1; min-height: 0; height: 100%; }
+
+/* Left panel */
+.panel {
+  background: var(--app-panel);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+}
+.left-panel {
+  width: 248px;
+  border-right: 1px solid var(--app-border);
+}
+
+.panel-section {
+  padding: 6px 0 10px 0;
+  border-bottom: 1px solid var(--app-border);
+}
+.panel-section:last-child { border-bottom: none; }
+
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--app-fg-2);
+  letter-spacing: 0.01em;
+  padding: 12px var(--ui-pad-panel-x) 6px;
+  text-transform: none;
+  cursor: default;
+}
+.section-header .actions { display: flex; gap: 2px; }
+.section-header .actions .icon-btn { width: 26px; height: 26px; border-radius: var(--ui-r-chip); }
+.section-header .actions .icon-btn svg { width: 16px; height: 16px; }
+
+/* ---- Left panel header: logo + file identity ---- */
+.lp-head {
+  padding: 12px var(--ui-pad-panel-x) 10px;
+  border-bottom: 1px solid var(--app-border);
+}
+.lp-head-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.lp-logo {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--app-fg);
+  flex-shrink: 0;
+}
+.lp-collapse { color: var(--app-fg); }
+.lp-file { display: flex; flex-direction: column; gap: 1px; }
+.lp-file-name {
+  display: inline-flex; align-items: center; gap: 4px;
+  align-self: flex-start;
+  max-width: 100%;
+  background: transparent; border: none;
+  padding: 0;
+  margin-left: -2px;
+  color: var(--app-fg);
+  font-size: 14px; font-weight: 650;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+.lp-file-name span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lp-file-name svg { color: var(--app-fg-2); flex-shrink: 0; }
+.lp-file-input {
+  align-self: stretch;
+  background: var(--app-panel-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--ui-r-ctrl);
+  color: var(--app-fg);
+  font-size: 14px; font-weight: 650;
+  letter-spacing: -0.01em;
+  padding: 1px 5px;
+  margin-left: -6px;
+  outline: none;
+  min-width: 0;
+}
+.lp-file-sub { font-size: 12px; color: var(--app-fg-3); }
+
+/* ---- Left panel tab row: File / Assets pills + search ---- */
+.lp-tabs-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px;
+  padding: 8px var(--ui-pad-panel-x);
+  border-bottom: 1px solid var(--app-border);
+}
+.lp-tabs { display: flex; gap: 2px; }
+.lp-tab {
+  height: 28px; padding: 0 12px;
+  background: transparent; border: none;
+  border-radius: var(--ui-r-ctrl);
+  font-size: 13px; font-weight: 500;
+  color: var(--app-fg-3);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease),
+              color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.lp-tab:hover { color: var(--app-fg-2); }
+.lp-tab.active { background: var(--app-active); color: var(--app-fg); }
+.lp-search-btn { color: var(--app-fg); }
+.lp-search-btn.on { background: var(--app-active); color: var(--app-fg); }
+
+.search-box {
+  display: flex; align-items: center; gap: 6px;
+  height: var(--ui-h-md);
+  padding: 0 10px;
+  margin: 8px var(--ui-pad-panel-x);
+  background: var(--app-panel-2);
+  border: 1px solid transparent;
+  border-radius: var(--ui-r-ctrl);
+  color: var(--app-fg-3);
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.search-box:hover { background: var(--app-hover); }
+.search-box:focus-within {
+  border-color: var(--accent);
+  background: var(--app-panel);
+  color: var(--app-fg-2);
+}
+.search-box input {
+  flex: 1; min-width: 0;
+  border: none; background: transparent; outline: none;
+  font-size: 12px;
+  color: var(--app-fg);
+}
+.search-box input::placeholder { color: var(--app-fg-3); }
+
+/* Layer tree */
+.layer-list { padding: 2px 6px 8px 6px; overflow: auto; flex: 1; min-height: 0; }
+.layer {
+  display: flex; align-items: center; gap: 6px;
+  height: var(--ui-h-row);
+  padding: 0 6px 0 4px;
+  border-radius: var(--ui-r-chip);
+  font-size: 12px;
+  color: var(--app-fg);
+  cursor: default;
+  position: relative;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.layer:hover { background: var(--app-hover); }
+.layer.selected { background: var(--accent-soft); color: var(--accent); }
+[data-theme="dark"] .layer.selected { color: var(--accent); }
+
+/* Frame rows get a faint tint so the hierarchy reads at a glance. */
+.layer.is-frame { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.layer.is-frame:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.layer.is-frame.selected { background: var(--accent-soft); }
+
+/* Descendants of a selected frame get a gentler highlight. */
+.layer.in-sel-subtree { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.layer.in-sel-subtree:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* Drag and drop visuals */
+.layer.drag-source { opacity: 0.4; }
+.layer.drop-inside {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  border-radius: 4px;
+}
+.layer .drop-line {
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 5;
+}
+.layer .drop-line::before {
+  content: ""; position: absolute;
+  left: -3px; top: -2px;
+  width: 6px; height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.layer .drop-line-top { top: -1px; }
+.layer .drop-line-bot { bottom: -1px; }
+.layer .caret {
+  width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--app-fg-3);
+  flex-shrink: 0;
+}
+.layer .caret.hidden { visibility: hidden; }
+.layer .layer-icon { width: 16px; height: 16px; color: var(--app-fg-2); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; }
+.layer.selected .layer-icon { color: var(--accent); }
+.layer .layer-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px;
+}
+.layer .layer-actions { display: flex; gap: 0; opacity: 0; flex-shrink: 0; transition: opacity var(--dur-fast, 120ms); }
+.layer:hover .layer-actions, .layer.selected .layer-actions { opacity: 1; }
+.layer-actions .icon-btn { width: 22px; height: 22px; border-radius: var(--ui-r-chip); }
+
+.pages-list { padding: 2px 6px 4px 6px; }
+.page-item {
+  display: flex; align-items: center; gap: 8px;
+  height: var(--ui-h-row);
+  padding: 0 10px;
+  border-radius: var(--ui-r-ctrl);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--app-fg);
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.page-item:hover { background: var(--app-hover); }
+.page-item.active { background: var(--app-active); color: var(--app-fg); font-weight: 600; }
+.page-item .page-delete {
+  flex-shrink: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  margin-right: -4px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--app-fg-3);
+  cursor: pointer;
+  padding: 0;
+}
+.page-item:hover .page-delete { display: inline-flex; }
+.page-item .page-delete:hover { background: var(--app-hover-strong, var(--app-hover)); color: var(--app-fg); }
+.page-rename-input {
+  flex: 1;
+  min-width: 0;
+  height: calc(var(--ui-h-row) - 6px);
+  padding: 0 4px;
+  background: var(--app-panel);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--app-fg);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+/* ============================================================
+   Canvas area
+   ============================================================ */
+.canvas-area {
+  flex: 1; min-width: 0; min-height: 0;
+  position: relative;
+  background: var(--canvas-bg);
+  overflow: hidden;
+}
+
+.ruler-h, .ruler-v {
+  position: absolute;
+  background: var(--ruler-bg);
+  color: var(--ruler-fg);
+  z-index: 5;
+  /* pointer-events: auto so users can drag-create guides from the ruler. */
+  font-size: 9px;
+  font-family: var(--font-mono);
+  user-select: none;
+}
+.ruler-h { cursor: ns-resize; }
+.ruler-v { cursor: ew-resize; }
+.ruler-h {
+  top: 0; left: 24px; right: 0; height: 24px;
+  border-bottom: 1px solid var(--ruler-line);
+}
+.ruler-v {
+  top: 0; left: 0; bottom: 0; width: 24px;
+  border-right: 1px solid var(--ruler-line);
+}
+.ruler-corner {
+  position: absolute; top: 0; left: 0;
+  width: 24px; height: 24px;
+  background: var(--ruler-bg);
+  border-right: 1px solid var(--ruler-line);
+  border-bottom: 1px solid var(--ruler-line);
+  z-index: 6;
+}
+
+/* ---- Ruler guides ---- */
+.guide {
+  background: #FF3B30;
+  opacity: 0.7;
+  pointer-events: auto;
+  z-index: 4;
+}
+.guide-h { cursor: ns-resize; }
+.guide-v { cursor: ew-resize; }
+.guide-h::before, .guide-v::before {
+  /* Wider invisible hit area so the 1px line is easy to grab. */
+  content: "";
+  position: absolute;
+  left: -3px; top: -3px; right: -3px; bottom: -3px;
+}
+.guide-preview {
+  background: var(--accent);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.canvas-scroller {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: default;
+}
+.canvas-scroller.pan-ready { cursor: grab; }
+.canvas-scroller.pan-active { cursor: grabbing; }
+.canvas-scroller.tool-frame,
+.canvas-scroller.tool-rect,
+.canvas-scroller.tool-ellipse,
+.canvas-scroller.tool-line,
+.canvas-scroller.tool-polygon,
+.canvas-scroller.tool-image,
+.canvas-scroller.tool-comment { cursor: crosshair; }
+/* Pen tool gets a nib cursor (white halo so it reads on any background),
+   hotspot at the nib tip. One SVG layers a thick white stroke under a thin
+   dark one; falls back to crosshair if data-URI cursors are unsupported. */
+.canvas-scroller.tool-pen {
+  cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M4%2020l4-1%2010-10a2.83%202.83%200%200%200-4-4L4%2015v5z'%20fill='%23fff'%20stroke='%23fff'%20stroke-width='3.5'/%3E%3Cpath%20d='M13%207l4%204'%20stroke='%23fff'%20stroke-width='3.5'/%3E%3Cpath%20d='M4%2020l4-1%2010-10a2.83%202.83%200%200%200-4-4L4%2015v5z'%20fill='%23fff'%20stroke='%23111'%20stroke-width='1.5'/%3E%3Cpath%20d='M13%207l4%204'%20stroke='%23111'%20stroke-width='1.5'/%3E%3C/svg%3E") 3 21, crosshair;
+}
+.canvas-scroller.tool-text { cursor: text; }
+.canvas-scroller.tool-zoom {
+  /* magnifying-glass cursor with a + inside */
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'><circle cx='10' cy='10' r='6' fill='white'/><line x1='14.5' y1='14.5' x2='20' y2='20'/><line x1='7' y1='10' x2='13' y2='10'/><line x1='10' y1='7' x2='10' y2='13'/></svg>") 10 10, zoom-in;
+}
+
+.canvas-world {
+  position: absolute; top: 0; left: 0;
+  transform-origin: 0 0;
+  /* No will-change/image-rendering hints here: those force the layer to
+     rasterize once at its native size and then upscale the bitmap, which
+     turns text into a blurry mush at high zoom. Letting the browser
+     re-rasterize on each transform change keeps text and vectors crisp. */
+}
+
+/* Frame (artboard) */
+.frame {
+  position: absolute;
+  box-sizing: border-box;  /* keep border inside w×h so selection box aligns */
+  background: white;
+  /* Shadow is inverse-scaled by the canvas zoom so the frame's bounding edge
+     stays ~1px regardless of zoom level. --zoom is set on .canvas-world. */
+  box-shadow: 0 calc(1px / var(--zoom, 1)) calc(3px / var(--zoom, 1)) rgba(0,0,0,0.12);
+}
+/* Nested frames don't get their own shadow — looks cleaner */
+.frame .frame { box-shadow: none; }
+[data-theme="dark"] .frame { box-shadow: 0 0 0 calc(1px / var(--zoom, 1)) rgba(0,0,0,0.5); }
+[data-theme="dark"] .frame .frame { box-shadow: none; }
+.frame-label {
+  position: absolute;
+  top: -20px; left: 0;
+  font-size: 11px; font-weight: 500;
+  color: var(--app-fg-2);
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: default;
+}
+.frame-label.selected { color: var(--accent); }
+
+/* Shape base */
+.shape { position: absolute; box-sizing: border-box; }
+
+/* Selection outline + handles */
+.selection-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+}
+.selection-box {
+  position: absolute;
+  border: 1px solid var(--accent);
+  pointer-events: none;
+}
+.selection-box.hover { border-style: dashed; opacity: 0.8; }
+.handle {
+  position: absolute;
+  width: 8px; height: 8px;
+  background: white;
+  border: 1px solid var(--accent);
+  border-radius: 1px;
+  pointer-events: auto;
+  z-index: 12;
+}
+.handle.rot {
+  width: 16px; height: 16px;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  cursor: grab;
+}
+.handle.mid { border-radius: 999px; width: 6px; height: 6px; }
+
+.size-badge {
+  position: absolute;
+  background: var(--accent);
+  color: white;
+  font-size: 10px; font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+
+.marquee {
+  position: absolute;
+  background: rgba(29, 78, 216, 0.1);
+  border: 1px solid var(--accent);
+  pointer-events: none;
+  z-index: 9;
+}
+
+.zoom-marquee {
+  position: absolute;
+  background: rgba(29, 78, 216, 0.08);
+  border: 1px dashed var(--accent);
+  pointer-events: none;
+  z-index: 9;
+}
+
+.snap-line {
+  position: absolute;
+  background: #ff3b7a;
+  pointer-events: none;
+  z-index: 11;
+}
+
+/* ============================================================
+   Bottom floating toolbar
+   ============================================================ */
+.tool-dock {
+  position: absolute;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center;
+  gap: 1px;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-floating);
+  padding: 5px;
+  box-shadow: var(--toolbar-shadow);
+  z-index: 20;
+}
+.tool-btn {
+  width: var(--ui-h-lg); height: var(--ui-h-lg);
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--app-fg);
+  border-radius: var(--ui-r-ctrl);
+  cursor: pointer;
+  position: relative;
+  /* Only the text/icon color animates. The background is intentionally NOT
+     transitioned: when you switch tools the canvas goes idle and nothing
+     forces a repaint, so a background transition gets stuck at its start
+     value — leaving the OLD tool highlighted and the newly-selected tool
+     (e.g. Pen) never lighting up. An instant background swap is also the
+     correct snappy feel for a tool dock. */
+  transition: color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.tool-btn:hover { background: var(--app-hover); }
+.tool-btn.active { background: var(--accent); color: white; }
+.tool-btn:focus-visible { box-shadow: var(--ui-focus-ring); outline: none; }
+.tool-btn .shortcut {
+  position: absolute;
+  top: 3px; right: 4px;
+  font-size: 8px;
+  opacity: 0.45;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.tool-divider { width: 1px; height: 20px; background: var(--app-border); margin: 0 4px; align-self: center; }
+.tool-caret {
+  position: absolute;
+  bottom: 3px; right: 3px;
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.5;
+}
+
+.tool-menu {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--toolbar-bg);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-floating);
+  padding: 5px;
+  box-shadow: var(--toolbar-shadow);
+  min-width: 184px;
+  z-index: 30;
+}
+.tool-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--ui-r-ctrl);
+  font-size: 12px;
+  color: var(--app-fg);
+  cursor: pointer;
+}
+.tool-menu-item:hover { background: var(--app-hover); }
+.tool-menu-item .shortcut { margin-left: auto; font-size: 11px; color: var(--app-fg-3); font-family: var(--font-mono); }
+
+/* ============================================================
+   Right inspector panel
+   ============================================================ */
+.right-panel {
+  width: 260px;
+  flex: 0 0 260px;          /* never grow/shrink in the flex row */
+  box-sizing: border-box;   /* 260px includes the border, no rounding wobble */
+  border-left: 1px solid var(--app-border);
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Reserve the scrollbar gutter ALL the time so the inner content width
+     stays constant whether the panel happens to be scrolling or not.
+     Without this, the tabs + rows visibly shrink by ~15px the moment a
+     scrollbar appears (e.g. when you add an effect / extra fill) and then
+     pop back when content gets shorter again. */
+  scrollbar-gutter: stable;
+}
+
+.insp-tabs {
+  display: flex;
+  padding: 0 var(--ui-pad-panel-x);
+  height: 40px;
+  border-bottom: 1px solid var(--app-border);
+  gap: 4px;
+}
+.insp-tab {
+  /* Fixed equal-width tabs that don't grow/shrink with the panel.
+     Wide enough to fit "Prototype" comfortably at our type scale. */
+  flex: 0 0 88px;
+  width: 88px;
+  background: transparent; border: none;
+  color: var(--app-fg-3);
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.insp-tab:hover { color: var(--app-fg-2); }
+.insp-tab.active { color: var(--app-fg); border-bottom-color: var(--accent); }
+
+/* ---- Right-panel chrome: header (avatar / present / share) + tab row ---- */
+.rp-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--app-panel);
+}
+.rp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 var(--ui-pad-panel-x);
+  border-bottom: 1px solid var(--app-border);
+}
+.rp-avatar {
+  width: 30px; height: 30px;
+  flex: 0 0 30px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  color: #fff;
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none;
+}
+.rp-present {
+  width: 32px; height: 32px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: var(--ui-r-ctrl);
+  color: var(--app-fg);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.rp-present:hover { background: var(--app-hover); }
+.rp-share {
+  height: 32px; padding: 0 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px; font-weight: 600;
+  border: none; border-radius: 999px;
+  cursor: pointer;
+  transition: filter var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.rp-share:hover { filter: brightness(1.08); }
+
+.rp-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 10px 0 var(--ui-pad-panel-x);
+  border-bottom: 1px solid var(--app-border);
+}
+.rp-tabs { display: flex; gap: 2px; }
+.rp-tab {
+  height: 28px; padding: 0 12px;
+  background: transparent; border: none; border-radius: var(--ui-r-ctrl);
+  color: var(--app-fg-3);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease),
+              color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.rp-tab:hover { color: var(--app-fg-2); }
+.rp-tab.active { background: var(--app-active); color: var(--app-fg); }
+
+.rp-zoom { position: relative; }
+.rp-zoom-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 28px; padding: 0 8px;
+  background: transparent; border: none; border-radius: var(--ui-r-ctrl);
+  color: var(--app-fg);
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+}
+.rp-zoom-btn:hover { background: var(--app-hover); }
+.rp-zoom-btn svg { color: var(--app-fg-3); }
+.rp-zoom-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 148px;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  padding: 4px;
+  z-index: 600;
+  display: flex; flex-direction: column;
+}
+.rp-zoom-menu button {
+  display: flex; align-items: center;
+  height: 30px; padding: 0 10px;
+  background: transparent; border: none; border-radius: 5px;
+  color: var(--app-fg);
+  font-size: 12px; text-align: left;
+  cursor: pointer;
+}
+.rp-zoom-menu button:hover { background: var(--app-hover); }
+.rp-zoom-menu button.on { color: var(--accent); font-weight: 600; }
+.rp-zoom-sep { height: 1px; background: var(--app-border); margin: 4px 6px; }
+
+.insp-section {
+  padding: 10px var(--ui-pad-panel-x);
+  border-bottom: 1px solid var(--app-border);
+}
+.insp-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 600;
+  color: var(--app-fg-2);
+  letter-spacing: 0.01em;
+  min-height: 26px;
+}
+.insp-section-header:not(:last-child) { margin-bottom: 8px; }
+.insp-section-header .actions { display: flex; gap: 2px; }
+.insp-section-header .actions .icon-btn { width: 26px; height: 26px; border-radius: var(--ui-r-chip); }
+.insp-section-header .actions .icon-btn svg { width: 16px; height: 16px; }
+
+.row {
+  display: flex; gap: var(--ui-gap-col);
+  margin-bottom: var(--ui-gap-row);
+}
+.row:last-child { margin-bottom: 0; }
+
+.input-wrap {
+  display: flex; align-items: center;
+  flex: 1; min-width: 0;
+  height: var(--ui-h-md);
+  background: var(--app-panel-2);
+  border: 1px solid transparent;
+  border-radius: var(--ui-r-ctrl);
+  padding: 0 6px;
+  gap: 4px;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease),
+              border-color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.input-wrap:hover { background: var(--app-hover); }
+.input-wrap:focus-within { border-color: var(--accent); background: var(--app-panel); }
+.input-wrap .prefix {
+  font-size: 11px; color: var(--app-fg-3); font-weight: 500;
+  flex-shrink: 0;
+  width: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.input-wrap input {
+  flex: 1; min-width: 0;
+  background: transparent; border: none; outline: none;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--app-fg);
+  text-align: left;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+  height: 100%;
+}
+.input-wrap input[type="number"] { -moz-appearance: textfield; }
+.input-wrap input::-webkit-outer-spin-button,
+.input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.input-wrap .suffix { font-size: 11px; color: var(--app-fg-3); padding-right: 2px; }
+.input-wrap .suffix.lh-unit {
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.input-wrap .suffix.lh-unit:hover { background: var(--app-hover); color: var(--app-fg); }
+.input-wrap.lh-auto input { color: var(--app-fg-3); font-style: italic; }
+
+.align-pill {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.align-pill button {
+  height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--app-panel-2); border: 1px solid transparent;
+  border-radius: var(--ui-r-chip);
+  color: var(--app-fg-2);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease),
+              color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.align-pill button:hover { background: var(--app-hover); color: var(--app-fg); }
+.align-pill button.on { background: var(--accent-soft); color: var(--accent); }
+
+/* ---- Auto layout (Figma-style) ---- */
+.al-panel { display: flex; flex-direction: column; gap: var(--ui-gap-row); }
+.al-top { display: flex; align-items: center; justify-content: space-between; }
+.toggle-pill.al-dir { display: inline-flex; }
+.toggle-pill.al-dir button { width: 30px; height: 22px; display: flex; align-items: center; justify-content: center; }
+.al-tune {
+  width: var(--ui-h-md); height: var(--ui-h-md);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: var(--ui-r-ctrl);
+  color: var(--app-fg-2); cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease), color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.al-tune:hover { background: var(--app-hover); color: var(--app-fg); }
+.al-tune.on { background: var(--accent-soft); color: var(--accent); }
+
+.al-main { display: flex; align-items: flex-start; gap: var(--ui-gap-row); }
+.al-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--ui-gap-row); }
+
+/* The 3×3 alignment matrix — a square the height of two field rows. */
+.al-grid {
+  position: relative;
+  width: 62px; height: 62px; flex-shrink: 0;
+  background: var(--app-panel-2);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-ctrl);
+  overflow: hidden;
+}
+.al-cells {
+  position: absolute; inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  z-index: 2;
+}
+.al-cell {
+  background: transparent; border: none; padding: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.al-dot {
+  width: 3px; height: 3px; border-radius: 999px;
+  background: var(--app-fg-3); opacity: 0.55;
+  transition: opacity var(--dur-fast, 120ms) var(--ease-out, ease), background var(--dur-fast, 120ms);
+}
+.al-cell:hover .al-dot { opacity: 1; background: var(--accent); }
+.al-cell.on .al-dot { opacity: 0; }
+/* The item-preview bars — float above the dots, ignore pointer events. */
+.al-bars {
+  position: absolute; inset: 7px;
+  display: flex; gap: 2.5px;
+  pointer-events: none; z-index: 1;
+}
+.al-bars span {
+  display: block; border-radius: 1.5px;
+  background: var(--accent);
+}
+/* Row direction → vertical bars; column → horizontal bars. Graduated
+   lengths give the bar-chart look from the alignment icon set, so the
+   group reads as content that anchors to the active edge (top/bottom or
+   left/right) per the flex alignment set inline. */
+.al-bars[style*="row"] span { width: 3px; }
+.al-bars[style*="row"] span:nth-child(1) { height: 12px; }
+.al-bars[style*="row"] span:nth-child(2) { height: 17px; }
+.al-bars[style*="row"] span:nth-child(3) { height: 8px; }
+.al-bars[style*="column"] span { height: 3px; }
+.al-bars[style*="column"] span:nth-child(1) { width: 12px; }
+.al-bars[style*="column"] span:nth-child(2) { width: 17px; }
+.al-bars[style*="column"] span:nth-child(3) { width: 8px; }
+
+/* Gap field caret + spacing menu */
+.al-gap-caret {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 3px; color: var(--app-fg-3);
+}
+.al-gap-caret:hover { background: var(--app-hover); color: var(--app-fg); }
+.al-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; min-width: 150px; z-index: 600;
+  background: var(--app-panel); border: 1px solid var(--app-border);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 4px;
+}
+.al-menu button {
+  display: flex; align-items: center; width: 100%;
+  height: 28px; padding: 0 10px;
+  background: transparent; border: none; border-radius: var(--ui-r-ctrl);
+  color: var(--app-fg); font-size: 12px; text-align: left; cursor: pointer;
+}
+.al-menu button:hover { background: var(--app-hover); }
+.al-menu button.on { color: var(--accent); font-weight: 600; }
+.al-tune-menu { right: 0; left: auto; min-width: 168px; }
+.al-check {
+  display: flex; align-items: center; gap: 8px;
+  height: 28px; padding: 0 8px; border-radius: var(--ui-r-ctrl);
+  font-size: 12px; color: var(--app-fg); cursor: pointer;
+}
+.al-check:hover { background: var(--app-hover); }
+.al-check input { accent-color: var(--accent); }
+
+/* Padding entry-mode selector inside the advanced-layout menu. */
+.al-pad-mode { padding: 6px 8px 2px; }
+.al-pad-mode-label { font-size: 11px; color: var(--app-fg-3); font-weight: 500; margin-bottom: 5px; }
+.toggle-pill.al-pad-mode-pill { display: flex; gap: 2px; }
+.toggle-pill.al-pad-mode-pill button { flex: 1 1 0; min-width: 0; height: 28px; display: flex; align-items: center; justify-content: center; }
+
+/* W/H sizing field: numeric input + Fixed/Hug/Fill menu button. */
+.size-field { display: flex; align-items: center; gap: 4px; flex: 1 1 0; min-width: 0; }
+.size-field .input-wrap { flex: 1 1 0; }
+.sizing-menu-wrap { flex: none; }
+.sizing-menu-btn {
+  display: flex; align-items: center; justify-content: center; gap: 1px;
+  height: var(--ui-h-md); min-width: 30px; padding: 0 4px;
+  background: var(--app-panel-2); border: 1px solid transparent;
+  border-radius: var(--ui-r-ctrl); color: var(--app-fg-3); cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease), color var(--dur-fast,120ms) var(--ease-out,ease);
+}
+.sizing-menu-btn:hover { background: var(--app-hover); color: var(--app-fg); }
+.sizing-menu-glyph { font-size: 13px; line-height: 1; }
+.sizing-menu-pop { right: 0; left: auto; min-width: 140px; }
+
+/* Absolute-position toggle for auto-layout children. */
+.al-abs-toggle {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  height: var(--ui-h-md); padding: 0 8px;
+  background: var(--app-panel-2); border: 1px solid transparent;
+  border-radius: var(--ui-r-ctrl); color: var(--app-fg-2);
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  transition: background var(--dur-fast,120ms) var(--ease-out,ease), color var(--dur-fast,120ms) var(--ease-out,ease);
+}
+.al-abs-toggle:hover { background: var(--app-hover); color: var(--app-fg); }
+.al-abs-toggle.on { color: var(--accent); border-color: var(--accent); background: var(--accent-soft, var(--app-hover)); }
+
+/* Individual padding → 2×2 grid of side inputs. */
+.al-pad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ui-gap-row); }
+
+
+/* Rotation + transform-action row: input on the left, 3-button pill on the right.
+   Use combined selector to outrank the generic `.toggle-pill { display: inline-flex }`
+   that comes later in the file. */
+.pos-rot-row { align-items: stretch; }
+.pos-rot-row > .input-wrap { flex: 1 1 0; min-width: 0; }
+.toggle-pill.pos-transform-pill {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.toggle-pill.pos-transform-pill button { flex: 1 1 0; min-width: 0; }
+
+/* Layout section — text-box sizing mode pill (Auto W / Auto H / Fixed) */
+.toggle-pill.layout-sizing-pill { display: flex; flex: 1 1 0; min-width: 0; box-sizing: border-box; }
+.toggle-pill.layout-sizing-pill button { flex: 1 1 0; min-width: 0; height: 26px; }
+
+.fill-row {
+  display: flex; align-items: center; gap: var(--ui-gap-col);
+  height: var(--ui-h-md);
+  padding: 0 6px;
+  border-radius: var(--ui-r-ctrl);
+  background: var(--app-panel-2);
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.fill-row:hover { background: var(--app-hover); }
+.fill-row.is-hidden .swatch-fill,
+.fill-row.is-hidden .hex-input,
+.fill-row.is-hidden .opacity-field { opacity: 0.4; }
+
+/* Paint row: pill on the left (fill-row), action buttons on the right (Eye / Minus). */
+.paint-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-gap-col);
+  margin-bottom: var(--ui-gap-row);
+}
+.paint-row:last-child { margin-bottom: 0; }
+.paint-row > .fill-row { flex: 1; min-width: 0; }
+.paint-action {
+  flex: none;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  border-radius: var(--ui-r-chip);
+  color: var(--app-fg-2);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease),
+              color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.paint-action:hover { background: var(--app-hover); color: var(--app-fg); }
+
+/* Opacity sub-field inside the fill-row pill (number + %). Borderless so it
+   blends into the pill instead of looking like a second control. */
+.opacity-field {
+  display: flex; align-items: center;
+  flex: none;
+  height: 100%;
+  min-width: 0;
+}
+.opacity-field input {
+  width: 32px;
+  text-align: right;
+  background: transparent;
+  border: none; outline: none;
+  font-size: 11px;
+  color: var(--app-fg);
+  padding: 0;
+  -moz-appearance: textfield;
+}
+.opacity-field input::-webkit-outer-spin-button,
+.opacity-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.opacity-field .suffix {
+  font-size: 11px; color: var(--app-fg-3);
+  padding-left: 2px;
+}
+
+/* Effects popover Color row — keep hex narrow so the opacity reads next to it
+   instead of being pushed to a faraway right edge. */
+.effects-color-row .hex-input { flex: 0 0 auto; width: 60px; letter-spacing: 0; }
+.effects-color-row { gap: 6px; }
+.swatch {
+  width: 18px; height: 18px;
+  border-radius: var(--ui-r-chip);
+  border: 1px solid rgba(0,0,0,0.12);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.swatch-fill {
+  width: 100%; height: 100%;
+  border-radius: 3px;
+}
+.hex-input {
+  flex: 1;
+  background: transparent;
+  border: none; outline: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-fg);
+  min-width: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.select-mini {
+  display: flex; align-items: center;
+  height: 26px; padding: 0 8px;
+  background: transparent; border: 1px solid transparent;
+  border-radius: var(--ui-r-chip); font-size: 11px; color: var(--app-fg-2);
+  cursor: pointer;
+  gap: 6px;
+}
+.select-mini:hover { background: var(--app-hover); color: var(--app-fg); }
+
+.toggle-pill {
+  display: inline-flex;
+  background: var(--app-panel-2);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-ctrl);
+  padding: 2px;
+  gap: 2px;
+  height: var(--ui-h-md);
+}
+.toggle-pill button {
+  padding: 0 7px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--app-fg-2);
+  cursor: pointer;
+}
+.toggle-pill button.on {
+  background: var(--app-panel);
+  color: var(--app-fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.check-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--app-fg);
+  cursor: pointer;
+}
+.check-row input { accent-color: var(--accent); }
+
+/* Color popover */
+.popover {
+  position: fixed;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 2px 6px rgba(0,0,0,0.1);
+  z-index: 800;
+  width: 230px;
+}
+
+/* --- Figma-style color picker --- */
+.cp-popover {
+  width: 264px;
+  padding: 10px;
+  user-select: none;
+}
+.cp-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cp-title {
+  font-size: 12px; font-weight: 600;
+  color: var(--app-fg);
+}
+.cp-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  background: transparent; border: none;
+  border-radius: 4px;
+  color: var(--app-fg-2);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease),
+              color var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.cp-close:hover { background: var(--app-hover); color: var(--app-fg); }
+.cp-sv {
+  position: relative;
+  width: 100%;
+  height: 168px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: crosshair;
+  border: 1px solid var(--app-border);
+}
+.cp-sv-white {
+  position: absolute; inset: 0;
+  background: linear-gradient(to right, #fff, rgba(255,255,255,0));
+}
+.cp-sv-black {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, #000, rgba(0,0,0,0));
+}
+.cp-sv-handle {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.cp-sliders {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.cp-eyedrop {
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--app-fg-2);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.cp-eyedrop:hover:not(:disabled) { background: var(--app-hover); color: var(--app-fg); }
+.cp-eyedrop:disabled { opacity: 0.4; cursor: not-allowed; }
+.cp-slider-stack {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.cp-hue, .cp-alpha {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.cp-hue {
+  background: linear-gradient(to right,
+    #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%,
+    #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+}
+.cp-alpha {
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: #fff;
+  overflow: hidden;
+}
+.cp-alpha-fill {
+  position: absolute; inset: 0;
+  border-radius: 5px;
+}
+.cp-hue-handle, .cp-alpha-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.cp-fields {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+}
+.cp-mode {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 26px;
+  padding: 0 6px 0 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cp-mode:hover { background: var(--app-hover); }
+.cp-mode svg { color: var(--app-fg-3); }
+.cp-mode-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  z-index: 10;
+  min-width: 64px;
+}
+.cp-mode-menu div {
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.cp-mode-menu div:hover { background: var(--app-hover); }
+.cp-mode-menu div.on { background: var(--accent-soft); color: var(--accent); }
+.cp-input {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center;
+  height: 26px;
+  border-radius: 5px;
+  background: transparent;
+  padding: 0 4px;
+}
+.cp-input:hover { background: var(--app-hover); }
+.cp-input:focus-within { background: var(--app-panel); box-shadow: inset 0 0 0 1px var(--accent); }
+.cp-input-wide { flex: 3; }
+.cp-input input {
+  flex: 1; min-width: 0;
+  background: transparent; border: none; outline: none;
+  font-size: 11px; font-weight: 500;
+  color: var(--app-fg);
+  text-align: center;
+  font-family: inherit;
+  padding: 0;
+  height: 100%;
+}
+.cp-input input[type="number"] { -moz-appearance: textfield; }
+.cp-input input::-webkit-outer-spin-button,
+.cp-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.cp-suffix {
+  font-size: 11px; color: var(--app-fg-3);
+  padding-right: 2px;
+}
+
+/* Favorite swatches */
+.cp-favs {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--app-border);
+}
+.cp-favs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-fg-3);
+}
+.cp-fav-add {
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--app-fg-2);
+  cursor: pointer;
+}
+.cp-fav-add:hover { background: var(--app-hover); color: var(--app-fg); }
+.cp-favs-empty {
+  font-size: 10px;
+  color: var(--app-fg-3);
+  text-align: center;
+  padding: 6px 0 2px;
+  font-style: italic;
+}
+.cp-favs-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+}
+.cp-fav {
+  position: relative;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cp-fav-swatch {
+  display: block;
+  width: 100%; height: 100%;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12);
+}
+.cp-fav:hover .cp-fav-swatch {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2), 0 0 0 2px var(--accent-soft);
+}
+
+.color-preview { width: 100%; height: 120px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--app-border); }
+.hex-row {
+  display: flex; gap: 6px; align-items: center;
+  margin-top: 6px;
+}
+.hex-row .input-wrap { flex: 1; }
+.swatches-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+.swatches-grid button {
+  height: 18px; border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.1);
+  cursor: pointer;
+}
+.hsl-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+
+/* Custom range */
+.range-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.range-row input[type="range"] {
+  flex: 1; accent-color: var(--accent);
+}
+
+/* Tweaks */
+.tweaks-panel {
+  position: fixed;
+  bottom: 80px; right: 270px;
+  width: 260px;
+  background: var(--toolbar-bg);
+  z-index: 1000;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: var(--toolbar-shadow);
+  z-index: 50;
+  font-size: 12px;
+  color: var(--app-fg);
+}
+.tweaks-panel h4 {
+  margin: 0 0 10px; font-size: 12px; font-weight: 600;
+  color: var(--app-fg);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* Resize cursors for handles */
+.handle.tl, .handle.br { cursor: nwse-resize; }
+.handle.tr, .handle.bl { cursor: nesw-resize; }
+.handle.tm, .handle.bm { cursor: ns-resize; }
+.handle.lm, .handle.rm { cursor: ew-resize; }
+
+/* Text being edited */
+.text-edit {
+  position: absolute;
+  outline: 1px solid var(--accent);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  overflow: hidden;
+  resize: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  cursor: text;
+  user-select: text;
+}
+
+/* Divider */
+.hr {
+  height: 1px; background: var(--app-border);
+  margin: 8px 0;
+}
+
+/* Empty state */
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  color: var(--app-fg-3);
+  font-size: 12px;
+  z-index: 1;
+}
+.canvas-empty .hint {
+  padding: 14px 20px;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  display: flex; flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  max-width: 300px;
+  text-align: center;
+  opacity: 0.9;
+}
+.canvas-empty kbd {
+  font-family: var(--font-mono);
+  padding: 1px 5px;
+  background: var(--app-panel-2);
+  border: 1px solid var(--app-border);
+  border-radius: 3px;
+  font-size: 10px;
+  color: var(--app-fg-2);
+}
+
+/* Selection colors chip */
+.sel-color {
+  width: 18px; height: 18px; border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.1);
+  display: inline-block;
+}
+
+/* Selection colors — list of fill-row pills (swatch + hex + opacity %). */
+.sel-colors-list { display: flex; flex-direction: column; gap: var(--ui-gap-row); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--app-border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--app-fg-3); background-clip: padding-box; }
+
+/* Effects-popover type dropdown — custom because native <select> can't
+   show icons next to each option. */
+.effects-type-trigger {
+  display: flex; align-items: center; gap: 8px;
+  height: var(--ui-h-md);
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-input, 6px);
+  color: var(--app-fg);
+  font-size: 12px;
+  cursor: pointer;
+}
+.effects-type-trigger:hover { background: var(--app-hover); }
+.effects-type-trigger svg { flex-shrink: 0; }
+
+.effects-type-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  padding: 4px;
+  background: var(--toolbar-bg);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  z-index: 600;
+}
+.effects-type-menu.flip-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+.effects-type-option {
+  display: flex; align-items: center; gap: 8px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--app-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.effects-type-option:hover { background: var(--app-hover); }
+.effects-type-option.on { background: var(--accent-soft, var(--app-hover)); color: var(--accent); }
+.effects-type-option svg { flex-shrink: 0; }
+
+/* Individual-sides stroke editor — cross-layout with a link/unlink button
+   at the center and a number input on each side. */
+.individual-sides-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: var(--ui-h-md) var(--ui-h-md) var(--ui-h-md);
+  gap: 4px;
+  justify-items: center;
+  align-items: center;
+}
+.individual-sides-grid .individual-side-input {
+  width: 60px;
+  height: var(--ui-h-md);
+  padding: 0;
+}
+.individual-sides-grid .individual-side-input input {
+  width: 100%;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  color: var(--app-fg);
+  font-size: 12px;
+  font-feature-settings: "tnum";
+  outline: none;
+}
+.individual-link {
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  color: var(--app-fg-2);
+  cursor: pointer;
+}
+.individual-link:hover { background: var(--app-hover); color: var(--app-fg); }
+.individual-link.on { background: var(--accent-soft, var(--app-hover)); border-color: var(--accent); color: var(--accent); }
+
+/* --- Multi-fill picker additions --- */
+/* Paint-type pill — Solid / Linear / Radial toggle inside the color popover. */
+.cp-type-pill {
+  display: flex;
+  gap: 2px;
+  background: var(--app-hover-soft, var(--app-hover));
+  border-radius: var(--ui-r-chip, 6px);
+  padding: 2px;
+  margin-bottom: 10px;
+}
+.cp-type-pill button {
+  flex: 1 1 0;
+  height: 24px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-fg-2);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cp-type-pill button:hover { color: var(--app-fg); }
+.cp-type-pill button.on {
+  background: var(--app-panel);
+  color: var(--app-fg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* Gradient stops bar — the strip showing live gradient preview + handles. */
+.cp-gradient-block { margin-bottom: 10px; }
+.cp-stops-bar {
+  position: relative;
+  width: 100%;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--app-border);
+  cursor: copy; /* click-to-add a stop */
+}
+.cp-stop {
+  position: absolute;
+  top: 50%;
+  width: 12px; height: 18px;
+  margin-left: -6px;
+  transform: translateY(-50%);
+  border-radius: 3px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.3);
+  cursor: ew-resize;
+}
+.cp-stop.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 1px 4px rgba(0,0,0,0.4); }
+
+/* Angle knob — circular dial with rotating needle indicator. Replaces the
+   slider with a compact rotate-by-drag widget plus a numeric input. */
+.cp-angle-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px;
+}
+.cp-angle-label {
+  font-size: 11px; color: var(--app-fg-2);
+  flex: 1 1 auto;
+}
+.cp-angle-knob {
+  position: relative;
+  width: 22px; height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  cursor: grab;
+  /* Tick marks at cardinal points for visual orientation. */
+  box-shadow:
+    inset 0 1px 0 rgba(0,0,0,0.04);
+}
+.cp-angle-knob:active { cursor: grabbing; }
+.cp-angle-knob:focus-visible { box-shadow: 0 0 0 2px var(--accent-soft, var(--app-hover)); outline: none; }
+.cp-angle-needle {
+  position: absolute;
+  /* Anchor at the center of the knob. The needle is a thin bar that extends
+     UP from center by `height`. Rotation pivots around the bottom center
+     (i.e. the knob's center) so 0° points straight up. */
+  left: 50%;
+  bottom: 50%;
+  width: 2px;
+  height: 9px;
+  margin-left: -1px;
+  background: var(--accent);
+  border-radius: 1px;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+.cp-angle-knob::after {
+  /* Small dot at the center for visual anchor. */
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 4px; height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--app-fg-2);
+  pointer-events: none;
+}
+.cp-input-narrow { width: 56px; }
+
+/* Stops header — small label + "+" button so adding a stop is discoverable
+   in addition to clicking the bar. */
+.cp-stops-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--app-fg-3);
+  margin-bottom: 4px;
+}
+.cp-stop-add {
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--app-fg-2);
+  cursor: pointer;
+}
+.cp-stop-add:hover { background: var(--app-hover); color: var(--app-fg); }
+
+/* Explicit list of every gradient stop with swatch, hex, position, remove. */
+.cp-stops-list {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+.cp-stop-row {
+  display: flex; align-items: center; gap: 6px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.cp-stop-row:hover { background: var(--app-hover); }
+.cp-stop-row.sel { border-color: var(--accent); background: var(--accent-soft, var(--app-hover)); }
+.cp-stop-swatch {
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+.cp-stop-hex {
+  flex: 1 1 0; min-width: 0;
+  font-size: 11px;
+  color: var(--app-fg);
+  font-feature-settings: "tnum";
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cp-stop-remove {
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--app-fg-2);
+  cursor: pointer;
+}
+.cp-stop-remove:hover:not(:disabled) { background: var(--app-hover); color: var(--app-fg); }
+.cp-stop-remove:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Empty state when a node has 0 fills. */
+.paint-row-empty {
+  font-size: 11px;
+  color: var(--app-fg-3);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px dashed var(--app-border);
+  text-align: center;
+}
+.paint-row-empty:hover { background: var(--app-hover); color: var(--app-fg-2); }
+
+/* Type label for non-solid fills in the list (e.g. "Linear"). */
+.paint-type-label {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--app-fg);
+  padding: 0 4px;
+  cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
