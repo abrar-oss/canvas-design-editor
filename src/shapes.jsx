@@ -497,6 +497,19 @@ function renderShape(n, isEditingText, onCommitText) {
     return <div style={boxStyle}>{renderText()}</div>;
   }
   if (n.type === "image") {
+    // A real pasted/placed image (data URL or remote src) renders as an <img>;
+    // otherwise fall back to the placeholder gradient + icon.
+    if (n.src) {
+      return (
+        <div style={{ ...common, borderRadius: n.radius || 0, overflow: "hidden" }}>
+          <img src={n.src} alt={n.name || "image"} draggable={false}
+               style={{ width: "100%", height: "100%",
+                        objectFit: n.objectFit || "cover",
+                        display: "block", pointerEvents: "none",
+                        userSelect: "none" }} />
+        </div>
+      );
+    }
     const colorA = n.placeholderA || "#E5E5E5";
     const colorB = n.placeholderB || "#A3A3A3";
     return (

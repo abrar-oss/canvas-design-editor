@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import { useApp } from "./utils.jsx";
 /* global React, Icon, useApp */
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 const TOOLS = [
   { id: "select", icon: Icon.Cursor, label: "Move", shortcut: "V" },
@@ -25,6 +25,24 @@ function ToolDock() {
   const { tool, setTool } = useApp();
   const [shapeMenu, setShapeMenu] = useState(false);
   const [activeShape, setActiveShape] = useState("rect");
+  const shapeGroupRef = useRef(null);
+
+  // Close the shape flyout when clicking anywhere outside the group, or on Escape.
+  useEffect(() => {
+    if (!shapeMenu) return;
+    const onDown = (e) => {
+      if (shapeGroupRef.current && !shapeGroupRef.current.contains(e.target)) {
+        setShapeMenu(false);
+      }
+    };
+    const onKey = (e) => { if (e.key === "Escape") setShapeMenu(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [shapeMenu]);
 
   // Keep the group button in sync when a shape tool is activated by shortcut
   // (R/O/L) or anywhere else — not just via the flyout menu.
@@ -40,14 +58,19 @@ function ToolDock() {
         if (t.group) {
           const active = ["rect","ellipse","line","polygon","star"].includes(tool);
           return (
-            <div key={t.id} style={{ position: "relative" }}>
+            <div key={t.id} ref={shapeGroupRef} style={{ position: "relative" }}>
               <button
-                className={`tool-btn ${active ? "active" : ""}`}
+                className={`tool-btn has-caret ${active ? "active" : ""}`}
                 onClick={() => setTool(activeShape)}
                 title={t.label}
               >
-                <ShapeIcon size={16} />
-                <span className="tool-caret" onClick={(e) => { e.stopPropagation(); setShapeMenu(v => !v); }} />
+                <ShapeIcon size={20} />
+                <span
+                  className={`tool-caret ${shapeMenu ? "open" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setShapeMenu(v => !v); }}
+                >
+                  <Icon.Chevron size={14} />
+                </span>
               </button>
               {shapeMenu && (
                 <div className="tool-menu">
@@ -73,7 +96,7 @@ function ToolDock() {
                   className={`tool-btn ${tool === t.id ? "active" : ""}`}
                   onClick={() => setTool(t.id)}
                   title={`${t.label} (${t.shortcut})`}>
-            <Ic size={16} />
+            <Ic size={20} />
           </button>
         );
       })}

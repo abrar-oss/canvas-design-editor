@@ -2,10 +2,10 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import { useApp, uid } from "./utils.jsx";
 /* global React, Icon, useApp, uid */
-const { useState, useMemo, useCallback } = React;
+const { useState, useMemo, useCallback, useEffect, useRef } = React;
 
 function LeftPanel() {
-  const { doc, setDoc, selection, setSelection, activePageId, setActivePageId, history, fileName, setFileName } = useApp();
+  const { doc, setDoc, selection, setSelection, activePageId, setActivePageId, history, fileName, setFileName, setTool } = useApp();
   const [tab, setTab] = useState("layers");
   // Page being inline-renamed (id) and its draft value.
   const [editingPageId, setEditingPageId] = useState(null);
@@ -16,6 +16,27 @@ function LeftPanel() {
   const [collapsed, setCollapsed] = useState({});
   // Drag state: { id, intent: "before"|"after"|"inside", targetId }
   const [drag, setDrag] = useState(null);
+  // Main (logo) menu — opens the Figma-style app menu.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openSub, setOpenSub] = useState(null); // which top item's submenu is open
+  const menuRef = useRef(null);
+
+  // Collapse any open submenu whenever the main menu closes.
+  useEffect(() => { if (!menuOpen) setOpenSub(null); }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    const onKey = (e) => { if (e.key === "Escape") setMenuOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   const page = doc.pages.find(p => p.id === activePageId);
   const all = page?.children || [];
@@ -144,6 +165,9 @@ function LeftPanel() {
     // Can't drop onto self or your own descendant.
     if (isDescendant(drag.id, target.id) || drag.id === target.id) return;
     e.preventDefault();
+    // Stop the event bubbling to the list container's onListDragOver, which
+    // would otherwise override our before/after/inside intent with "root".
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     const intent = computeIntent(e, target);
     if (drag.intent !== intent || drag.targetId !== target.id) {
@@ -155,6 +179,9 @@ function LeftPanel() {
 
   const onRowDrop = (e, target) => {
     e.preventDefault();
+    // Don't let the drop bubble to the list container's onListDrop, which would
+    // re-run applyDrop with "root" and eject the node out of its frame.
+    e.stopPropagation();
     if (!drag || drag.id === target.id) { setDrag(null); return; }
     if (isDescendant(drag.id, target.id)) { setDrag(null); return; }
     const intent = computeIntent(e, target);
@@ -320,14 +347,118 @@ function LeftPanel() {
     });
   };
 
+  // Data-driven submenus for the main (logo) menu. `sep` = divider,
+  // `shortcut` = right-aligned key hint, `caret` = has a nested menu,
+  // `disabled` = greyed/inert, `run` = action (else the row is display-only).
+  const SUBMENUS = {
+    File: [
+      { label: "New Design", run: () => setTool("frame") },
+      { label: "Image place holder", run: () => setTool("image") },
+      { label: "Export", run: () => {} /* TODO: wire PNG export */ },
+    ],
+    Edit: [
+      { label: "Undo", shortcut: "⌘Z", run: () => history.undo() },
+      { label: "Redo", shortcut: "⇧⌘Z", run: () => history.redo() },
+      { sep: true },
+      { label: "Cut", shortcut: "⌘X" },
+      { label: "Copy", shortcut: "⌘C" },
+      { label: "Copy As", caret: true },
+      { label: "Paste", shortcut: "⌘V" },
+      { label: "Paste Over Selection", shortcut: "⇧⌘V" },
+      { label: "Paste to Replace", shortcut: "⇧⌘R" },
+      { label: "Duplicate", shortcut: "⌘D" },
+      { label: "Delete", shortcut: "⌫" },
+      { sep: true },
+      { label: "Find", shortcut: "⌘F" },
+      { label: "Find Next", shortcut: "⇧⌘F" },
+      { label: "Find Previous", shortcut: "⇧⌘D" },
+      { label: "Find and Replace…" },
+      { sep: true },
+      { label: "Set Default Properties" },
+      { label: "Copy Properties", shortcut: "⌥⌘C" },
+      { label: "Paste Properties", shortcut: "⌥⌘V" },
+      { sep: true },
+      { label: "Pick Color", shortcut: "⌃C" },
+      { sep: true },
+      { label: "Select All", shortcut: "⌘A", run: () => page && setSelection(page.children.map(n => n.id)) },
+      { label: "Select Matching Layers", shortcut: "⌥⌘A", disabled: true },
+      { label: "Select None", run: () => setSelection([]) },
+      { label: "Select Inverse", shortcut: "⇧⌘A" },
+      { label: "Select All With", caret: true },
+    ],
+  };
+
   return (
     <div className="panel left-panel">
       <div className="lp-head">
         <div className="lp-head-top">
-          <div className="lp-logo" aria-label="Logo">
-            <svg width="24" height="15" viewBox="0 0 128 82" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M87.46 0V0.04H70.41V81.21H87.46C109.61 81.21 127.56 63.05 127.56 40.6C127.56 18.15 109.62 0 87.46 0ZM0 60.13C0 71.78 9.44 81.22 21.09 81.22V59.88H0V60.14V60.13ZM32.35 3.71H0V29.35H17.3L40.43 81.22L40.39 81.27H70.37L35.84 3.71H32.35Z" fill="currentColor"/>
-            </svg>
+          <div className="lp-logo-wrap" ref={menuRef}>
+            <button className={`lp-logo ${menuOpen ? "open" : ""}`} aria-label="Main menu"
+                    title="Main menu" onClick={() => setMenuOpen(v => !v)}>
+              <svg width="24" height="15" viewBox="0 0 128 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M87.46 0V0.04H70.41V81.21H87.46C109.61 81.21 127.56 63.05 127.56 40.6C127.56 18.15 109.62 0 87.46 0ZM0 60.13C0 71.78 9.44 81.22 21.09 81.22V59.88H0V60.14V60.13ZM32.35 3.71H0V29.35H17.3L40.43 81.22L40.39 81.27H70.37L35.84 3.71H32.35Z" fill="currentColor"/>
+              </svg>
+              <Icon.Chevron size={12} />
+            </button>
+            {menuOpen && (
+              <div className="main-menu" role="menu">
+                <div className="mm-search">
+                  <Icon.Search size={14} />
+                  <input autoFocus placeholder="Actions..." />
+                  <span className="mm-kbd">⌘K</span>
+                </div>
+                <div className="mm-group">
+                  {["File", "Edit", "View", "Object", "Text", "Arrange", "Vector"].map(label => {
+                    const sub = SUBMENUS[label];
+                    if (!sub) {
+                      return (
+                        <button key={label} className="mm-item" role="menuitem">
+                          <span>{label}</span><Icon.ChevronR size={14} />
+                        </button>
+                      );
+                    }
+                    return (
+                      <div key={label} className="mm-item-wrap"
+                           onMouseEnter={() => setOpenSub(label)}
+                           onMouseLeave={() => setOpenSub(null)}>
+                        <button className={`mm-item ${openSub === label ? "hover" : ""}`} role="menuitem">
+                          <span>{label}</span><Icon.ChevronR size={14} />
+                        </button>
+                        {openSub === label && (
+                          <div className="main-menu mm-sub" role="menu">
+                            <div className="mm-group">
+                              {sub.map((o, i) => o.sep ? (
+                                <div key={`sep-${i}`} className="mm-sep" />
+                              ) : (
+                                <button key={o.label}
+                                        className={`mm-item ${o.disabled ? "disabled" : ""}`}
+                                        role="menuitem"
+                                        disabled={o.disabled}
+                                        onClick={o.disabled || o.caret ? undefined
+                                          : () => { o.run && o.run(); setMenuOpen(false); }}>
+                                  <span>{o.label}</span>
+                                  {o.caret
+                                    ? <Icon.ChevronR size={14} />
+                                    : (o.shortcut ? <span className="mm-kbd">{o.shortcut}</span> : null)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mm-sep" />
+                <div className="mm-group">
+                  {["Help and account"].map(label => (
+                    <button key={label} className="mm-item" role="menuitem">
+                      <span>{label}</span><Icon.ChevronR size={14} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <button className="icon-btn lp-collapse" title="Collapse panel"><Icon.PanelLeft size={16} /></button>
         </div>

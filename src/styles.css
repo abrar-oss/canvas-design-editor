@@ -380,11 +380,87 @@ input { font-family: inherit; color: inherit; }
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 10px;
 }
+.lp-logo-wrap { position: relative; flex-shrink: 0; }
 .lp-logo {
-  width: 30px; height: 30px;
+  height: 30px;
   display: flex; align-items: center; justify-content: center;
+  gap: 3px;
+  padding: 0 4px;
+  border: none; background: transparent;
   color: var(--app-fg);
-  flex-shrink: 0;
+  border-radius: var(--ui-r-ctrl);
+  cursor: pointer;
+  transition: background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.lp-logo:hover, .lp-logo.open { background: var(--app-hover); }
+.lp-logo > svg:last-child { opacity: 0.55; transition: transform var(--dur-fast, 120ms) var(--ease-out, ease); }
+.lp-logo.open > svg:last-child { transform: rotate(180deg); }
+
+/* Figma-style main menu opened from the logo. */
+.main-menu {
+  position: absolute;
+  top: calc(100% + 6px); left: 0;
+  width: 232px;
+  /* overflow stays visible so nested submenu flyouts aren't clipped */
+  overflow: visible;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-floating);
+  box-shadow: var(--toolbar-shadow);
+  padding: 6px;
+  z-index: 100;
+  animation: mm-in var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+@keyframes mm-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.mm-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px 8px;
+  color: var(--app-fg-3);
+}
+.mm-search input {
+  flex: 1; min-width: 0;
+  border: none; background: transparent; outline: none;
+  color: var(--app-fg);
+  font-size: 13px;
+}
+.mm-search input::placeholder { color: var(--app-fg-3); }
+.mm-kbd { font-size: 11px; color: var(--app-fg-3); font-family: var(--font-mono); }
+.mm-group { display: flex; flex-direction: column; }
+.mm-item {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none; background: transparent;
+  color: var(--app-fg);
+  border-radius: var(--ui-r-chip);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.mm-item:hover:not(.disabled) { background: var(--accent); color: #fff; }
+.mm-item > svg { opacity: 0.5; flex-shrink: 0; }
+.mm-item:hover:not(.disabled) > svg { opacity: 0.9; }
+.mm-item:hover:not(.disabled) .mm-kbd { color: rgba(255,255,255,0.85); }
+.mm-item.disabled { opacity: 0.4; cursor: default; }
+.mm-badge { font-size: 12px; color: var(--app-fg-3); }
+.mm-item:hover .mm-badge { color: rgba(255,255,255,0.85); }
+.mm-sep { height: 1px; background: var(--app-border); margin: 6px 4px; }
+.mm-item.hover { background: var(--accent); color: #fff; }
+.mm-item.hover > svg { opacity: 0.9; }
+
+/* Nested submenu flyout (e.g. File > …) — sits to the right of its parent row. */
+.mm-item-wrap { position: relative; }
+.main-menu.mm-sub {
+  top: -7px;
+  left: calc(100% + 5px);
+  width: 208px;
+  /* a long submenu (e.g. Edit) scrolls; it has no further flyouts to clip */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 .lp-collapse { color: var(--app-fg); }
 .lp-file { display: flex; flex-direction: column; gap: 1px; }
@@ -783,7 +859,7 @@ input { font-family: inherit; color: inherit; }
   z-index: 20;
 }
 .tool-btn {
-  width: var(--ui-h-lg); height: var(--ui-h-lg);
+  width: 38px; height: 38px;
   display: flex; align-items: center; justify-content: center;
   border: none; background: transparent;
   color: var(--app-fg);
@@ -810,14 +886,26 @@ input { font-family: inherit; color: inherit; }
   font-family: var(--font-mono);
 }
 .tool-divider { width: 1px; height: 20px; background: var(--app-border); margin: 0 4px; align-self: center; }
-.tool-caret {
-  position: absolute;
-  bottom: 3px; right: 3px;
-  width: 0; height: 0;
-  border-left: 4px solid transparent;
-  border-top: 4px solid currentColor;
-  opacity: 0.5;
+/* Shape-group button holds a shape icon PLUS a dropdown chevron side by side,
+   so it hugs its contents instead of the fixed square size. */
+.tool-btn.has-caret {
+  width: auto;
+  gap: 1px;
+  padding: 0 4px 0 6px;
 }
+.tool-caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -1px;
+  opacity: 0.5;
+  transition: transform var(--dur-fast, 120ms) var(--ease-out, ease),
+              opacity var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.tool-caret svg { display: block; }
+.tool-btn:hover .tool-caret { opacity: 0.75; }
+.tool-btn.active .tool-caret { opacity: 0.85; }
+.tool-caret.open { transform: rotate(180deg); }
 
 .tool-menu {
   position: absolute;
@@ -1180,6 +1268,21 @@ input { font-family: inherit; color: inherit; }
 /* W/H sizing field: numeric input + Fixed/Hug/Fill menu button. */
 .size-field { display: flex; align-items: center; gap: 4px; flex: 1 1 0; min-width: 0; }
 .size-field .input-wrap { flex: 1 1 0; }
+/* Aspect-ratio (constrain proportions) toggle between the W and H fields. */
+.ratio-lock {
+  flex: 0 0 auto;
+  width: var(--ui-h-md); height: var(--ui-h-md);
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--app-fg-3);
+  border-radius: var(--ui-r-ctrl);
+  cursor: pointer;
+  transition: color var(--dur-fast, 120ms) var(--ease-out, ease),
+              background var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.ratio-lock:hover { background: var(--app-hover); color: var(--app-fg); }
+.ratio-lock.on { color: var(--accent); }
+.ratio-lock:focus-visible { box-shadow: var(--ui-focus-ring); outline: none; }
 .sizing-menu-wrap { flex: none; }
 .sizing-menu-btn {
   display: flex; align-items: center; justify-content: center; gap: 1px;

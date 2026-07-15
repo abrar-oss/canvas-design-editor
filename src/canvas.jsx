@@ -224,6 +224,49 @@ function Canvas() {
     }));
   }, [setDoc, activePageId]);
 
+  // Z-order (stacking) — reorder selected nodes among their siblings. Array
+  // order IS z-order (last sibling = frontmost), so we only permute the
+  // sibling slots and leave every other node in place.
+  //   mode: "front" | "back" | "forward" | "backward"
+  const reorderZ = useCallback((mode) => {
+    if (!selection.length) return;
+    const selSet = new Set(selection);
+    history.snapshot();
+    setDoc(d => ({
+      ...d,
+      pages: d.pages.map(p => {
+        if (p.id !== activePageId) return p;
+        const arr = p.children.slice();
+        const byId = Object.fromEntries(arr.map(c => [c.id, c]));
+        const moveOne = (id) => {
+          const node = byId[id];
+          if (!node) return;
+          const pid = node.parentId || null;
+          const sibs = arr.filter(c => (c.parentId || null) === pid).map(c => c.id);
+          const si = sibs.indexOf(id);
+          let nsi = si;
+          if (mode === "front") nsi = sibs.length - 1;
+          else if (mode === "back") nsi = 0;
+          else if (mode === "forward") nsi = Math.min(sibs.length - 1, si + 1);
+          else if (mode === "backward") nsi = Math.max(0, si - 1);
+          if (nsi === si) return;
+          sibs.splice(si, 1);
+          sibs.splice(nsi, 0, id);
+          // Write the sibling nodes back into the same array slots, new order.
+          const slots = [];
+          arr.forEach((c, i) => { if ((c.parentId || null) === pid) slots.push(i); });
+          sibs.forEach((sid, k) => { arr[slots[k]] = byId[sid]; });
+        };
+        // Process order avoids selected nodes clobbering each other's slots.
+        const ids = arr.filter(c => selSet.has(c.id)).map(c => c.id);
+        const order = (mode === "back" || mode === "forward") ? ids.slice().reverse() : ids;
+        order.forEach(moveOne);
+        return { ...p, children: arr };
+      })
+    }));
+    history.commit();
+  }, [selection, activePageId, history, setDoc]);
+
   // ============================================================
   // Ruler guides — drag from a ruler to drop a guide line;
   // drag a guide back to its ruler to delete it.
@@ -528,6 +571,15 @@ function Canvas() {
         history.commit();
         return;
       }
+      // Z-order shortcuts (Figma): ] front, [ back, Cmd/Ctrl+] forward,
+      // Cmd/Ctrl+[ backward. Requires a selection.
+      if ((e.key === "]" || e.key === "[") && selection.length) {
+        e.preventDefault();
+        const mod = e.metaKey || e.ctrlKey;
+        if (e.key === "]") reorderZ(mod ? "forward" : "front");
+        else reorderZ(mod ? "backward" : "back");
+        return;
+      }
       // Tool shortcuts (single-letter, no modifiers). Z is handled above as a
       // hold-to-zoom modifier, so it's intentionally not in this map.
       const keyMap = { v: "select", h: "hand", f: "frame", r: "rect", o: "ellipse", l: "line",
@@ -633,7 +685,69 @@ function Canvas() {
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, [selection, children, spaceHeld, history, tool]);
+  }, [selection, children, spaceHeld, history, tool, reorderZ]);
+
+  // Paste an image straight from the OS clipboard (Cmd/Ctrl+V of a copied
+  // image, screenshot, etc.) → drops a real image node at the cursor.
+  useEffect(() => {
+    const onPaste = (e) => {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      const imgItem = [...items].find(it => it.type && it.type.startsWith("image/"));
+      if (!imgItem) return; // no image on the clipboard → let other paste paths run
+      const file = imgItem.getAsFile();
+      if (!file) return;
+      e.preventDefault();
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = reader.result;
+        const img = new Image();
+        img.onload = () => {
+          // Cap the placed size so huge screenshots don't flood the canvas,
+          // preserving aspect ratio.
+          const MAX = 800;
+          let w = img.naturalWidth || SHAPE_DEFAULTS.image.w;
+          let h = img.naturalHeight || SHAPE_DEFAULTS.image.h;
+          const scale = Math.min(1, MAX / w, MAX / h);
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+
+          // Drop point: last cursor world position → viewport center → origin.
+          let cx, cy, parent = null;
+          if (cursorWorldRef.current) {
+            cx = cursorWorldRef.current.x; cy = cursorWorldRef.current.y;
+            parent = deepestFrameAt(cx, cy)?.id || null;
+          } else {
+            const vp = canvasRef.current && canvasRef.current.getBoundingClientRect();
+            cx = vp ? (vp.width / 2 - pan.x) / zoom : 0;
+            cy = vp ? (vp.height / 2 - pan.y) / zoom : 0;
+          }
+
+          const node = {
+            ...SHAPE_DEFAULTS.image,
+            id: uid(),
+            type: "image",
+            parentId: parent,
+            x: Math.round(cx - w / 2),
+            y: Math.round(cy - h / 2),
+            w, h,
+            src,
+            _autoName: "Image",
+          };
+          history.snapshot();
+          addNode(node);
+          setSelection([node.id]);
+          history.commit();
+        };
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [pan, zoom, history, addNode]);
 
   // ---------- Pen-tool helpers ----------
   // Patch a single point on an in-progress vector (used to pull Bézier

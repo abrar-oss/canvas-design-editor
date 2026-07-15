@@ -395,14 +395,21 @@ function LayoutSizeRow({ n, update, children, resolved, resizeTextSafe }) {
   // size for Fixed nodes, and reflects hug/fill/auto-height for the rest).
   const rw = Math.round(resolved?.w ?? n.w);
   const rh = Math.round(resolved?.h ?? n.h);
+  const locked = !!n.lockRatio;
+  const canRatio = locked && rw > 0 && rh > 0;
   const setW = (v) => {
     // Typing a width pins to Fixed at that value.
     const base = n.type === "text" && resizeTextSafe ? resizeTextSafe(n, { w: v }, "w") : { w: v };
-    update({ ...base, layoutSizingH: "fixed" });
+    const patch = { ...base, layoutSizingH: "fixed" };
+    // With proportions locked, scale height to keep the current aspect ratio.
+    if (canRatio) { patch.h = Math.max(1, Math.round(v * rh / rw)); patch.layoutSizingV = "fixed"; }
+    update(patch);
   };
   const setH = (v) => {
     const base = n.type === "text" && resizeTextSafe ? resizeTextSafe(n, { h: v }, "h") : { h: v };
-    update({ ...base, layoutSizingV: "fixed" });
+    const patch = { ...base, layoutSizingV: "fixed" };
+    if (canRatio) { patch.w = Math.max(1, Math.round(v * rw / rh)); patch.layoutSizingH = "fixed"; }
+    update(patch);
   };
   const pickW = (mode) => update(mode === "fixed" ? { layoutSizingH: "fixed", w: rw } : { layoutSizingH: mode });
   const pickH = (mode) => update(mode === "fixed" ? { layoutSizingV: "fixed", h: rh } : { layoutSizingV: mode });
@@ -412,6 +419,12 @@ function LayoutSizeRow({ n, update, children, resolved, resizeTextSafe }) {
         <NumInput prefix="W" value={rw} min={1} onChange={setW} style={{ flex: 1 }}/>
         {optsW.length > 1 && <SizingMenu value={curW} options={optsW} onPick={pickW}/>}
       </div>
+      <button className={`ratio-lock ${locked ? "on" : ""}`}
+              onClick={() => update({ lockRatio: !locked })}
+              title={locked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+              aria-pressed={locked}>
+        {locked ? <Icon.Lock size={12} /> : <Icon.Link size={12} />}
+      </button>
       <div className="size-field">
         <NumInput prefix="H" value={rh} min={1} onChange={setH} style={{ flex: 1 }}/>
         {optsH.length > 1 && <SizingMenu value={curH} options={optsH} onPick={pickH}/>}
@@ -2424,7 +2437,7 @@ function PanelTopBar({ mode, setMode, zoom, setZoom, fitZoom }) {
           <button className={`rp-tab ${mode === "design" ? "active" : ""}`}
                   onClick={() => setMode("design")}>Design</button>
           <button className={`rp-tab ${mode === "prototype" ? "active" : ""}`}
-                  onClick={() => setMode("prototype")}>Prototype</button>
+                  onClick={() => setMode("prototype")}>Automation</button>
         </div>
         <ZoomMenu zoom={zoom} setZoom={setZoom} fitZoom={fitZoom} />
       </div>
