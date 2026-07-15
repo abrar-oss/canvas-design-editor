@@ -3098,7 +3098,7 @@ const update = (patch) => {
                   el: world, w: bw, h: bh, name: "design",
                   capture: {
                     width: bw, height: bh,
-                    style: { transform: `translate(${-minX}px, ${-minY}px)`, transformOrigin: "top left" },
+                    cloneTransform: `translate(${-minX}px, ${-minY}px)`,
                   },
                 };
               }} />
@@ -3583,7 +3583,10 @@ const update = (patch) => {
       <Section title="Export" defaultOpen={false}>
         <ExportControls getTarget={() => {
           const el = document.querySelector(`[data-node-id="${n.id}"]`);
-          return el ? { el, w: Math.round(n.w), h: Math.round(n.h), name: n.name || "design" } : null;
+          if (!el) return null;
+          // toRaster clones the node to a clean origin, so no offset handling
+          // is needed here — just report its size.
+          return { el, w: Math.round(n.w), h: Math.round(n.h), name: n.name || "design" };
         }} />
       </Section>
 

@@ -14,20 +14,46 @@ function triggerDownload(dataUrl, filename) {
   a.remove();
 }
 
-async function toRaster(el, format, scale, extra) {
-  // skipFonts: html-to-image otherwise tries to inline every stylesheet's
-  // @font-face — including the cross-origin Google Fonts sheets — which throws
-  // SecurityErrors and re-fetches on every export. Skipping it makes exports
-  // fast and error-free; text falls back to the system sans (≈ Inter).
-  const opts = { pixelRatio: scale, cacheBust: true, skipFonts: true, ...extra };
-  if (format === "jpeg") {
-    return htmlToImage.toJpeg(el, {
-      ...opts,
-      quality: 0.95,
-      backgroundColor: (extra && extra.backgroundColor) || "#ffffff",
-    });
+// Rasterize an element. Capturing it in place fails when it's absolutely
+// positioned at a world offset and/or nested under a `transform: scale()`
+// ancestor (the design canvas) — its content gets pushed outside the capture
+// box, producing a blank image. So we CLONE it into a clean, untransformed
+// off-screen host at the origin and rasterize that.
+//   capture.width/height  — output box (defaults to el's size)
+//   capture.cloneTransform — transform applied to the clone (e.g. a translate
+//                            to crop the whole page to its content bbox)
+async function toRaster(el, format, scale, capture = {}) {
+  const w = Math.max(1, Math.round(capture.width || el.offsetWidth || 1));
+  const h = Math.max(1, Math.round(capture.height || el.offsetHeight || 1));
+
+  // The host just holds the clone off-screen; html-to-image captures the CLONE
+  // (capturing the fixed-positioned host wrapper renders blank). `width`/`height`
+  // crop the output to the design box; a cloneTransform (e.g. a page-crop
+  // translate) shifts the content into that box.
+  const host = document.createElement("div");
+  host.style.cssText = `position:fixed; left:-100000px; top:0; margin:0; padding:0; background:transparent;`;
+  const clone = el.cloneNode(true);
+  clone.style.position = "static";
+  clone.style.left = "0px";
+  clone.style.top = "0px";
+  clone.style.margin = "0px";
+  clone.style.transform = capture.cloneTransform || "none";
+  clone.style.transformOrigin = "top left";
+  host.appendChild(clone);
+  document.body.appendChild(host);
+
+  try {
+    // skipFonts: avoids html-to-image inlining cross-origin Google-Fonts
+    // stylesheets (SecurityError + per-export refetch). Text falls back to the
+    // system sans (≈ Inter).
+    const opts = { pixelRatio: scale, cacheBust: true, skipFonts: true, width: w, height: h };
+    if (format === "jpeg") {
+      return await htmlToImage.toJpeg(clone, { ...opts, quality: 0.95, backgroundColor: "#ffffff" });
+    }
+    return await htmlToImage.toPng(clone, opts);
+  } finally {
+    host.remove();
   }
-  return htmlToImage.toPng(el, opts);
 }
 
 /**

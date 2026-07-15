@@ -363,7 +363,7 @@ function LeftPanel() {
     try {
       await exportDesign({
         el: world, format: "png", scale: 2, name: fileName || "design", width: bw, height: bh,
-        capture: { width: bw, height: bh, style: { transform: `translate(${-minX}px, ${-minY}px)`, transformOrigin: "top left" } },
+        capture: { width: bw, height: bh, cloneTransform: `translate(${-minX}px, ${-minY}px)` },
       });
     } catch (e) { console.error("Export failed:", e); window.alert("Export failed: " + (e && e.message || e)); }
   };
