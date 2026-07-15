@@ -3,8 +3,45 @@ import { Icon } from "./icons.jsx";
 import {
   useApp, fillCss, hexToRgba, clamp, fillsOf, fillsPatch, lineHeightCss, paintBg,
 } from "./utils.jsx";
+import { exportDesign } from "./exportDesign.js";
 /* global React, Icon, useApp, fillCss, hexToRgba, clamp */
 const { useState, useRef, useEffect, useLayoutEffect, useMemo } = React;
+
+// Format picker + Export button. `getTarget()` returns
+// { el, w, h, name, capture? } describing what to rasterize, or null.
+function ExportControls({ getTarget }) {
+  const [fmt, setFmt] = useState("png");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    const t = getTarget && getTarget();
+    if (!t || !t.el) { window.alert("Nothing to export."); return; }
+    setBusy(true);
+    try {
+      await exportDesign({
+        el: t.el, format: fmt, scale: 2,
+        name: t.name || "design", width: t.w, height: t.h, capture: t.capture,
+      });
+    } catch (e) {
+      console.error("Export failed:", e);
+      window.alert("Export failed: " + (e && e.message ? e.message : e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="row">
+      <select className="export-format" value={fmt} onChange={e => setFmt(e.target.value)} disabled={busy}>
+        <option value="png">PNG</option>
+        <option value="jpeg">JPG</option>
+        <option value="pdf">PDF</option>
+      </select>
+      <button className="select-mini export-btn" onClick={run} disabled={busy}
+              style={{ flex: 1, border: "1px solid var(--app-border)", justifyContent: "center" }}>
+        <Icon.Download size={12} /> {busy ? "Exporting…" : "Export"}
+      </button>
+    </div>
+  );
+}
 
 // ----- Number input that reacts to drag (scrubbing) -----
 // Accepts plain numbers OR simple arithmetic expressions:
@@ -3042,11 +3079,29 @@ const update = (patch) => {
               <div style={{ fontSize: 11, color: "var(--app-fg-3)" }}>None yet.</div>
             </Section>
             <Section title="Export">
-              <div className="row">
-                <button className="select-mini" style={{ flex: 1, border: "1px solid var(--app-border)" }}>
-                  <Icon.Download size={12}/> Export PNG
-                </button>
-              </div>
+              <ExportControls getTarget={() => {
+                // Whole page: union bbox of all root nodes (offset* are logical
+                // world coords, unaffected by the canvas zoom transform).
+                const world = document.querySelector(".canvas-world");
+                if (!world) return null;
+                const roots = [...world.children].filter(c => c.getAttribute && c.getAttribute("data-node-id"));
+                if (!roots.length) return null;
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                roots.forEach(el => {
+                  const x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight;
+                  minX = Math.min(minX, x); minY = Math.min(minY, y);
+                  maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+                });
+                const bw = Math.max(1, Math.round(maxX - minX));
+                const bh = Math.max(1, Math.round(maxY - minY));
+                return {
+                  el: world, w: bw, h: bh, name: "design",
+                  capture: {
+                    width: bw, height: bh,
+                    style: { transform: `translate(${-minX}px, ${-minY}px)`, transformOrigin: "top left" },
+                  },
+                };
+              }} />
             </Section>
           </>
         )}
@@ -3526,11 +3581,10 @@ const update = (patch) => {
       </Section>
 
       <Section title="Export" defaultOpen={false}>
-        <div className="row">
-          <button className="select-mini" style={{ flex: 1, border: "1px solid var(--app-border)", justifyContent: "center" }}>
-            <Icon.Download size={12}/> Export {Math.round(n.w)}×{Math.round(n.h)}
-          </button>
-        </div>
+        <ExportControls getTarget={() => {
+          const el = document.querySelector(`[data-node-id="${n.id}"]`);
+          return el ? { el, w: Math.round(n.w), h: Math.round(n.h), name: n.name || "design" } : null;
+        }} />
       </Section>
 
       {colorPicker && (() => {

@@ -1425,6 +1425,16 @@ input { font-family: inherit; color: inherit; }
   gap: 6px;
 }
 .select-mini:hover { background: var(--app-hover); color: var(--app-fg); }
+.export-format {
+  height: 26px; padding: 0 6px;
+  flex: 0 0 66px;
+  background: transparent;
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-chip);
+  font-size: 11px; color: var(--app-fg);
+  cursor: pointer;
+}
+.export-btn[disabled] { opacity: 0.6; cursor: default; }
 
 .toggle-pill {
   display: inline-flex;

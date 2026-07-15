@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "./icons.jsx";
 import { useApp, uid } from "./utils.jsx";
+import { exportDesign } from "./exportDesign.js";
 /* global React, Icon, useApp, uid */
 const { useState, useMemo, useCallback, useEffect, useRef } = React;
 
@@ -347,6 +348,26 @@ function LeftPanel() {
     });
   };
 
+  // File > Export — export the whole page as PNG (union bbox of root nodes).
+  const exportWholePage = async () => {
+    const world = document.querySelector(".canvas-world");
+    const roots = world ? [...world.children].filter(c => c.getAttribute && c.getAttribute("data-node-id")) : [];
+    if (!roots.length) { window.alert("Nothing to export."); return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    roots.forEach(el => {
+      const x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight;
+      minX = Math.min(minX, x); minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w); maxY = Math.max(maxY, y + h);
+    });
+    const bw = Math.max(1, Math.round(maxX - minX)), bh = Math.max(1, Math.round(maxY - minY));
+    try {
+      await exportDesign({
+        el: world, format: "png", scale: 2, name: fileName || "design", width: bw, height: bh,
+        capture: { width: bw, height: bh, style: { transform: `translate(${-minX}px, ${-minY}px)`, transformOrigin: "top left" } },
+      });
+    } catch (e) { console.error("Export failed:", e); window.alert("Export failed: " + (e && e.message || e)); }
+  };
+
   // Data-driven submenus for the main (logo) menu. `sep` = divider,
   // `shortcut` = right-aligned key hint, `caret` = has a nested menu,
   // `disabled` = greyed/inert, `run` = action (else the row is display-only).
@@ -354,7 +375,7 @@ function LeftPanel() {
     File: [
       { label: "New Design", run: () => setTool("frame") },
       { label: "Image place holder", run: () => setTool("image") },
-      { label: "Export", run: () => {} /* TODO: wire PNG export */ },
+      { label: "Export", run: () => exportWholePage() },
     ],
     Edit: [
       { label: "Undo", shortcut: "⌘Z", run: () => history.undo() },
