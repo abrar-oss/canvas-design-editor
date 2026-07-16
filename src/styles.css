@@ -1509,40 +1509,63 @@ input { font-family: inherit; color: inherit; }
   box-shadow: var(--toolbar-shadow);
   animation: mm-in var(--dur-fast, 120ms) var(--ease-out, ease);
 }
-.ifp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ifp-head { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .ifp-fit {
-  flex: 1; height: 30px; padding: 0 8px;
+  flex: 1; height: 28px; padding: 0 8px;
   border: 1px solid var(--app-border); border-radius: var(--ui-r-ctrl);
-  background: var(--app-panel); color: var(--app-fg); font-size: 12px; cursor: pointer;
+  background: transparent; color: var(--app-fg); font-size: 12px; cursor: pointer;
 }
 .ifp-replace, .img-fill-popover .cp-close {
-  width: 28px; height: 28px; flex: 0 0 auto;
+  width: 26px; height: 26px; flex: 0 0 auto;
   display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--app-border); background: transparent;
-  color: var(--app-fg-2); border-radius: var(--ui-r-ctrl); cursor: pointer;
+  border: none; background: transparent;
+  color: var(--app-fg-3); border-radius: var(--ui-r-ctrl); cursor: pointer;
 }
 .ifp-replace:hover, .img-fill-popover .cp-close:hover { background: var(--app-hover); color: var(--app-fg); }
 .ifp-preview {
-  height: 180px; margin-bottom: 12px;
+  height: 168px; margin-bottom: 14px;
   border-radius: var(--ui-r-surface); overflow: hidden;
   /* checkerboard transparency backdrop */
   background-color: #fff;
   background-image:
-    linear-gradient(45deg, #e5e5e5 25%, transparent 25%),
-    linear-gradient(-45deg, #e5e5e5 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #e5e5e5 75%),
-    linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
-  background-size: 16px 16px;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    linear-gradient(45deg, #ededed 25%, transparent 25%),
+    linear-gradient(-45deg, #ededed 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ededed 75%),
+    linear-gradient(-45deg, transparent 75%, #ededed 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0;
 }
 .ifp-preview-img { width: 100%; height: 100%; }
 .ifp-slider-row {
-  display: grid; grid-template-columns: 84px 1fr; align-items: center;
-  gap: 10px; margin-top: 9px;
+  display: grid; grid-template-columns: 78px 1fr; align-items: center;
+  gap: 10px; margin-top: 10px;
 }
 .ifp-slider-label { font-size: 12px; color: var(--app-fg-2); }
+
+/* Minimal neutral slider — thin gray track, small circular handle (no accent
+   fill), so the panel reads clean instead of "all blue". */
 .ifp-slider-row input[type="range"] {
-  width: 100%; accent-color: var(--accent); cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 14px; background: transparent; cursor: pointer;
+}
+.ifp-slider-row input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px; border-radius: 3px; background: var(--app-border);
+}
+.ifp-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 12px; height: 12px; margin-top: -4.5px;
+  border-radius: 50%; background: var(--app-panel);
+  border: 1px solid var(--app-fg-3);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+}
+.ifp-slider-row input[type="range"]:hover::-webkit-slider-thumb { border-color: var(--app-fg-2); }
+.ifp-slider-row input[type="range"]::-moz-range-track {
+  height: 3px; border-radius: 3px; background: var(--app-border);
+}
+.ifp-slider-row input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--app-panel); border: 1px solid var(--app-fg-3);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
 }
 
 /* Frame tool — device/size presets panel */
