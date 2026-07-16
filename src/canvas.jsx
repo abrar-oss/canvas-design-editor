@@ -1902,20 +1902,26 @@ function Canvas() {
       }
       if (inside) candidates.push(n);
     }
-    const inCtx = selCtx
-      ? candidates.find(n => (n.parentId || null) === selCtx)
-      : candidates.find(n => n.type !== "frame");
-    let hover = inCtx?.id || null;
-    if (!hover && !selCtx) {
-      // Mirror onMouseDown's root rule: don't highlight filled root frames on body hover.
-      const cand = candidates[0];
-      if (cand) {
-        const isRootFrame = cand.type === "frame" && !cand.parentId;
-        const hasKids = isRootFrame && children.some(c => c.parentId === cand.id);
-        if (!(isRootFrame && hasKids)) hover = cand.id;
+    // Mirror the click rule exactly so the hover outline matches what a click
+    // would select:
+    //   - Inside a context (selCtx): the direct child of the context.
+    //   - At root: the OUTERMOST container under the cursor — so hovering a
+    //     frame highlights the FRAME's box, not a child image whose bounds
+    //     overflow the (clipping) frame.
+    let hover = null;
+    if (selCtx) {
+      hover = candidates.find(n => (n.parentId || null) === selCtx)?.id || null;
+    } else {
+      const topHit = candidates[0];
+      if (topHit) {
+        let node = topHit;
+        while (node.parentId) {
+          const parent = children.find(c => c.id === node.parentId);
+          if (!parent) break;
+          node = parent;
+        }
+        hover = node.id;
       }
-    } else if (!hover) {
-      hover = candidates[0]?.id || null;
     }
     setHoveredId(hover);
   };
