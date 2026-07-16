@@ -3195,13 +3195,11 @@ const update = (patch) => {
           </div>
         </div>
         {n.type === "frame" && (
-          <div className="row" style={{ marginTop: 6 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--app-fg-2)", cursor: "pointer" }}>
-              <input type="checkbox" checked={n.clipContent !== false}
-                     onChange={e => update({ clipContent: e.target.checked })}/>
-              Clip content
-            </label>
-          </div>
+          <label className="clip-content-row">
+            <span className="clip-content-label"><Icon.Frame size={13} /> Clip content</span>
+            <input type="checkbox" className="clip-content-toggle" checked={n.clipContent !== false}
+                   onChange={e => update({ clipContent: e.target.checked })}/>
+          </label>
         )}
       </Section>
 
