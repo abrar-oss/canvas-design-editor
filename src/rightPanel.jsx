@@ -810,6 +810,26 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
   };
   const switchType = (t) => {
     if (t === paintType) return;
+    if (t === "image") {
+      // Image paint: pick a file, set it as the fill, and close the picker
+      // (the fill's fit is edited from the fill row's Fill/Fit/Tile dropdown).
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          onChange({ type: "image", src: reader.result, fit: "cover",
+                     opacity: value?.opacity ?? 1, visible: value?.visible !== false });
+          if (onClose) onClose();
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+      return;
+    }
     if (t === "solid") {
       // Use the currently-selected stop's color as the solid color.
       const cur = stops[selStopIdx] || stops[0];
@@ -1070,7 +1090,7 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
       </div>
       {allowGradient && (
         <div className="cp-type-pill">
-          {[["solid","Solid"],["linear","Linear"],["radial","Radial"]].map(([k, lbl]) => (
+          {[["solid","Solid"],["linear","Linear"],["radial","Radial"],["image","Image"]].map(([k, lbl]) => (
             <button key={k} className={paintType === k ? "on" : ""} onClick={() => switchType(k)}>{lbl}</button>
           ))}
         </div>
@@ -2640,39 +2660,6 @@ const FRAME_PRESETS = [
   ] },
 ];
 
-// Popup shown when the Fill "+" is clicked — lets the user pick the fill type
-// (defaults to solid color). Mirrors Figma's paint-type chooser.
-function FillTypeMenu({ anchor, onPick, onClose }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
-  const opts = [
-    { type: "solid",  title: "Solid color",     sw: { background: "#9ca3af" } },
-    { type: "linear", title: "Linear gradient", sw: { background: "linear-gradient(135deg, #ffffff, #111111)" } },
-    { type: "radial", title: "Radial gradient", sw: { background: "radial-gradient(circle at 35% 35%, #ffffff, #111111)" } },
-    { type: "image",  title: "Image",           img: true },
-  ];
-  return (
-    <div className="fill-type-menu" ref={ref} style={{ left: anchor.x, top: anchor.y }} role="menu">
-      {opts.map(o => (
-        <button key={o.type} className="fill-type-opt" title={o.title} onClick={() => onPick(o.type)}>
-          {o.img
-            ? <span className="fill-type-sw fill-type-img"><Icon.Image size={15} /></span>
-            : <span className="fill-type-sw" style={o.sw} />}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function RightPanel() {
   const { doc, setDoc, activePageId, selection, setSelection, history, mode, setMode,
           tool, setTool, pan, zoom, setZoom, fitZoom, canvasBg } = useApp();
@@ -2702,7 +2689,6 @@ function RightPanel() {
   const one = selected.length === 1 ? selected[0] : null;
   const [insp, setInsp] = useState("design");
   const [colorPicker, setColorPicker] = useState(null); // { target: "fill"|"stroke", anchor }
-  const [fillTypeMenu, setFillTypeMenu] = useState(null); // { anchor } — fill-type chooser
   // Anchor for the advanced text-settings popover ({x, y}) or null.
   const [textMoreOpen, setTextMoreOpen] = useState(null);
   // Anchor for the advanced stroke-settings popover ({x, y}) or null.
@@ -3500,29 +3486,17 @@ const update = (patch) => {
           };
           input.click();
         };
-        const addImageFill = () => pickImage(src =>
-          setFills([{ type: "image", src, fit: "cover", opacity: 1, visible: true }, ...fills]));
-        // Add a fill of the chosen type (default: solid color).
-        const addFillOfType = (type) => {
-          if (type === "image") { addImageFill(); return; }
-          if (type === "linear") { setFills([{ ...DEFAULT_LINEAR }, ...fills]); return; }
-          if (type === "radial") { setFills([{ ...DEFAULT_RADIAL }, ...fills]); return; }
-          addFill(); // solid
-        };
-        // The "+" opens a chooser popup so the user picks the fill type.
-        const openFillTypeMenu = (e) => {
+        // The "+" adds a solid fill and opens the full color picker on it, where
+        // the user can switch the paint type (Solid / Linear / Radial / Image).
+        const openNewFill = (e) => {
           const r = e.currentTarget.getBoundingClientRect();
-          setFillTypeMenu({ anchor: { x: r.right - 148, y: r.bottom + 6 } });
+          addFill();
+          setColorPicker({ target: "fill", index: 0, anchor: { x: r.left - 248, y: r.top } });
         };
         return (
-        <Section title="Fill" add onAdd={openFillTypeMenu}>
-          {fillTypeMenu && (
-            <FillTypeMenu anchor={fillTypeMenu.anchor}
-              onClose={() => setFillTypeMenu(null)}
-              onPick={(type) => { setFillTypeMenu(null); addFillOfType(type); }} />
-          )}
+        <Section title="Fill" add onAdd={openNewFill}>
           {fills.length === 0 && (
-            <div className="paint-row-empty" onClick={() => addFillOfType("solid")}>+ Add fill</div>
+            <div className="paint-row-empty" onClick={openNewFill}>+ Add fill</div>
           )}
           {fills.map((f, i) => {
             const swatchBg = f.type === "solid"
