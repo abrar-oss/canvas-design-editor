@@ -226,10 +226,30 @@ function renderShape(n, isEditingText, onCommitText) {
   const backgroundBlurPx= (fx && fxType === "background-blur") ? (fx.blur ?? 16) : 0;
   const glassBlurPx     = (fx && fxType === "glass")           ? (fx.blur ?? 18) : 0;
   const combinedShadow = [...strokeShadows, dropShadow, innerShadow].filter(Boolean).join(", ") || null;
+  // Image-fill adjustments (Exposure/Contrast/Saturation/Temperature/Tint/
+  // Highlights/Shadows) → a CSS filter. Applied to the fill layer only; for a
+  // frame the children are DOM siblings, so they are NOT affected.
+  const imgAdjust = (() => {
+    const arr = Array.isArray(n.fills) ? n.fills : (n.fill ? [n.fill] : []);
+    const img = arr.find(p => p && p.type === "image" && p.visible !== false && p.adjust);
+    const a = img && img.adjust;
+    if (!a) return null;
+    const parts = [];
+    if (a.exposure)   parts.push(`brightness(${(1 + a.exposure).toFixed(3)})`);
+    if (a.contrast)   parts.push(`contrast(${(1 + a.contrast).toFixed(3)})`);
+    if (a.saturation) parts.push(`saturate(${(1 + a.saturation).toFixed(3)})`);
+    if (a.temperature > 0) parts.push(`sepia(${(a.temperature * 0.5).toFixed(3)})`);
+    else if (a.temperature < 0) parts.push(`hue-rotate(${Math.round(a.temperature * 25)}deg)`);
+    if (a.tint) parts.push(`hue-rotate(${Math.round(a.tint * 35)}deg)`);
+    if (a.highlights) parts.push(`brightness(${(1 + a.highlights * 0.15).toFixed(3)})`);
+    if (a.shadows)    parts.push(`brightness(${(1 + a.shadows * 0.1).toFixed(3)}) contrast(${(1 - a.shadows * 0.08).toFixed(3)})`);
+    return parts.length ? parts.join(" ") : null;
+  })();
   // Layer-blur stacks on top of any legacy `n.blur` (used by older docs).
   const filterCss = [
     n.blur ? `blur(${n.blur}px)` : null,
     layerBlurPx ? `blur(${layerBlurPx}px)` : null,
+    imgAdjust,
   ].filter(Boolean).join(" ") || undefined;
   const backdropFilterCss = (backgroundBlurPx || glassBlurPx)
     ? `blur(${backgroundBlurPx || glassBlurPx}px)`

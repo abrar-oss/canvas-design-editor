@@ -1499,6 +1499,52 @@ input { font-family: inherit; color: inherit; }
   background: transparent; box-shadow: none; color: var(--app-fg-2);
 }
 
+/* Image-fill properties popup (fit + preview + adjustment sliders) */
+.img-fill-popover {
+  position: fixed; z-index: 200;
+  width: 264px; padding: 12px;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-floating);
+  box-shadow: var(--toolbar-shadow);
+  animation: mm-in var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.ifp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ifp-fit {
+  flex: 1; height: 30px; padding: 0 8px;
+  border: 1px solid var(--app-border); border-radius: var(--ui-r-ctrl);
+  background: var(--app-panel); color: var(--app-fg); font-size: 12px; cursor: pointer;
+}
+.ifp-replace, .img-fill-popover .cp-close {
+  width: 28px; height: 28px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--app-border); background: transparent;
+  color: var(--app-fg-2); border-radius: var(--ui-r-ctrl); cursor: pointer;
+}
+.ifp-replace:hover, .img-fill-popover .cp-close:hover { background: var(--app-hover); color: var(--app-fg); }
+.ifp-preview {
+  height: 180px; margin-bottom: 12px;
+  border-radius: var(--ui-r-surface); overflow: hidden;
+  /* checkerboard transparency backdrop */
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #e5e5e5 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e5e5 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e5e5 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e5e5 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.ifp-preview-img { width: 100%; height: 100%; }
+.ifp-slider-row {
+  display: grid; grid-template-columns: 84px 1fr; align-items: center;
+  gap: 10px; margin-top: 9px;
+}
+.ifp-slider-label { font-size: 12px; color: var(--app-fg-2); }
+.ifp-slider-row input[type="range"] {
+  width: 100%; accent-color: var(--accent); cursor: pointer;
+}
+
 /* Frame tool — device/size presets panel */
 .frame-presets-hint {
   padding: 12px var(--ui-pad-panel-x) 4px;

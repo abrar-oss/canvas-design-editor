@@ -2660,6 +2660,65 @@ const FRAME_PRESETS = [
   ] },
 ];
 
+// Image-fill properties popup (Figma-style): fit mode, preview, and image
+// adjustment sliders. Opens when the image-fill thumbnail is clicked.
+const IMG_ADJUSTS = [
+  ["exposure", "Exposure"], ["contrast", "Contrast"], ["saturation", "Saturation"],
+  ["temperature", "Temperature"], ["tint", "Tint"], ["highlights", "Highlights"], ["shadows", "Shadows"],
+];
+function ImageFillPopover({ paint, anchor, onChange, onReplace, onClose }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState({ left: anchor.x, top: anchor.y });
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const r = el.getBoundingClientRect();
+    let left = anchor.x, top = anchor.y;
+    if (left + r.width > window.innerWidth - 8) left = anchor.x - r.width - 12;
+    if (left < 8) left = 8;
+    if (top + r.height > window.innerHeight - 8) top = Math.max(8, window.innerHeight - r.height - 8);
+    setPos({ left, top });
+  }, [anchor.x, anchor.y]);
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [onClose]);
+  const adj = paint.adjust || {};
+  const fitMode = paint.fit || "cover";
+  const previewSize = fitMode === "contain" ? "contain" : fitMode === "tile" ? "auto" : "cover";
+  return (
+    <div ref={ref} className="popover img-fill-popover" style={{ left: pos.left, top: pos.top }}>
+      <div className="ifp-head">
+        <select className="ifp-fit" value={fitMode} onChange={e => onChange({ fit: e.target.value })}>
+          <option value="cover">Fill</option>
+          <option value="contain">Fit</option>
+          <option value="tile">Tile</option>
+        </select>
+        <button className="ifp-replace" title="Replace image" onClick={onReplace}><Icon.Image size={15} /></button>
+        <button className="cp-close" onClick={onClose} title="Close"><Icon.Close size={12} /></button>
+      </div>
+      <div className="ifp-preview">
+        <div className="ifp-preview-img" style={{
+          backgroundImage: `url("${paint.src}")`,
+          backgroundSize: previewSize,
+          backgroundRepeat: fitMode === "tile" ? "repeat" : "no-repeat",
+          backgroundPosition: "center",
+        }} />
+      </div>
+      {IMG_ADJUSTS.map(([key, label]) => (
+        <div className="ifp-slider-row" key={key}>
+          <span className="ifp-slider-label">{label}</span>
+          <input type="range" min={-100} max={100} value={Math.round((adj[key] || 0) * 100)}
+                 onChange={e => onChange({ adjust: { ...adj, [key]: parseInt(e.target.value, 10) / 100 } })}
+                 onDoubleClick={() => onChange({ adjust: { ...adj, [key]: 0 } })} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RightPanel() {
   const { doc, setDoc, activePageId, selection, setSelection, history, mode, setMode,
           tool, setTool, pan, zoom, setZoom, fitZoom, canvasBg } = useApp();
@@ -2689,6 +2748,7 @@ function RightPanel() {
   const one = selected.length === 1 ? selected[0] : null;
   const [insp, setInsp] = useState("design");
   const [colorPicker, setColorPicker] = useState(null); // { target: "fill"|"stroke", anchor }
+  const [imageFillEdit, setImageFillEdit] = useState(null); // { index, anchor } — image-fill props popup
   // Anchor for the advanced text-settings popover ({x, y}) or null.
   const [textMoreOpen, setTextMoreOpen] = useState(null);
   // Anchor for the advanced stroke-settings popover ({x, y}) or null.
@@ -3511,8 +3571,8 @@ const update = (patch) => {
                    onMouseLeave={(e) => e.currentTarget.classList.remove("hovered")}>
                 <div className={"fill-row" + (f.visible === false ? " is-hidden" : "")}>
                   <div className="swatch" onClick={(e) => {
-                    if (f.type === "image") { pickImage(src => setFillAt(i, { src })); return; }
                     const r = e.currentTarget.getBoundingClientRect();
+                    if (f.type === "image") { setImageFillEdit({ index: i, anchor: { x: r.left - 252, y: r.top } }); return; }
                     setColorPicker({ target: "fill", index: i, anchor: { x: r.left - 240, y: r.top } });
                   }}>
                     <div className="swatch-fill" style={{ background: swatchBg,
@@ -3736,6 +3796,35 @@ const update = (patch) => {
           }}
           onClose={() => setColorPicker(null)}
         />
+        );
+      })()}
+      {imageFillEdit && (() => {
+        const paint = fillsOf(n)[imageFillEdit.index];
+        if (!paint || paint.type !== "image") return null;
+        const patchFill = (patch) => {
+          const arr = fillsOf(n).slice();
+          arr[imageFillEdit.index] = { ...arr[imageFillEdit.index], ...patch };
+          update(fillsPatch(arr));
+        };
+        return (
+          <ImageFillPopover
+            paint={paint}
+            anchor={imageFillEdit.anchor}
+            onChange={patchFill}
+            onReplace={() => {
+              const input = document.createElement("input");
+              input.type = "file"; input.accept = "image/*";
+              input.onchange = () => {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => patchFill({ src: reader.result });
+                reader.readAsDataURL(file);
+              };
+              input.click();
+            }}
+            onClose={() => setImageFillEdit(null)}
+          />
         );
       })()}
     </div>
