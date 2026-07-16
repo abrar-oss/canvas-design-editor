@@ -925,28 +925,23 @@ function Canvas() {
       } else if (selCtx) {
         target = hits.find(h => (h.parentId || null) === selCtx) || null;
       } else {
-        // Root context. Frames behave like artboards:
-        //   - Topmost non-frame wins (so clicking a child selects the child).
-        //   - If only frames are under the cursor, pick the topmost frame —
-        //     BUT a filled root frame is NOT selectable from its body. Root
-        //     frames can only be picked via their canvas label.
-        //   - EXCEPTION: once a root frame IS selected, its body becomes a
-        //     drag handle. Clicking the body lets the user move the whole
-        //     frame, like Figma. The "label-only" rule applies to the
-        //     INITIAL selection only.
-        target = hits.find(h => h.type !== "frame") || null;
-        if (!target) {
-          const candidate = hits[0];
-          if (candidate?.type === "frame") {
-            const isRootFrame = !candidate.parentId;
-            const hasKids = children.some(c => c.parentId === candidate.id);
-            const alreadySelected = selection.includes(candidate.id);
-            if (isRootFrame && hasKids && !alreadySelected) {
-              target = null; // filled, unselected root frame body — ignore
-            } else {
-              target = candidate;
-            }
+        // Root context (Figma): a single click selects the OUTERMOST container
+        // under the cursor. Clicking anywhere over a top-level frame — including
+        // over its children — selects that frame, so a drag moves the WHOLE
+        // frame (with its children), not the element inside it. To reach a
+        // child, double-click the frame to enter it (sets selCtx); each further
+        // double-click drills one level deeper.
+        const topHit = hits[0] || null;
+        if (topHit) {
+          let node = topHit;
+          while (node.parentId) {
+            const parent = children.find(c => c.id === node.parentId);
+            if (!parent) break;
+            node = parent;
           }
+          target = node;
+        } else {
+          target = null;
         }
       }
 
@@ -1823,33 +1818,31 @@ function Canvas() {
     window.addEventListener("mouseup", up);
   };
 
-  // Double-click: Figma-style frame selection.
-  // - Text node → enter text edit (unchanged)
-  // - Anywhere else → select the DEEPEST FRAME under the cursor.
-  //   This lets the user grab a filled frame for move/resize: single-click hits
-  //   the child, double-click escalates to the frame itself.
+  // Double-click: Figma-style DRILL-DOWN. Single-click selects the outermost
+  // frame; each double-click descends one level toward the element under the
+  // cursor (entering that frame as the selection context), until it reaches the
+  // deepest element. A text node at the target enters text editing.
   const onDoubleClick = (e) => {
     if (tool !== "select") return;
     const w = screenToWorld(e.clientX, e.clientY);
     const deepId = hitTest(children, w.x, w.y, { deep: true });
     const deepNode = deepId ? children.find(c => c.id === deepId) : null;
-    if (deepNode?.type === "text") {
-      setSelection([deepId]);
-      setEditingText(deepId);
-      return;
+    if (!deepNode) return;
+
+    // Ancestor path from the outermost frame down to the deepest hit.
+    const path = [];
+    for (let c = deepNode; c; c = c.parentId ? children.find(x => x.id === c.parentId) : null) {
+      path.unshift(c);
     }
-    const frame = deepestFrameAt(w.x, w.y);
-    if (frame) {
-      // Root frames are label-only — double-clicking their body does nothing.
-      if (!frame.parentId) return;
-      setSelection([frame.id]);
-      // selCtx is the frame's PARENT — so the frame itself is the selected
-      // direct child of that context. This makes resize handles work and
-      // keeps Esc behavior consistent (Esc steps ctx up one level).
-      setSelCtx(frame.parentId || null);
-      return;
-    }
-    if (deepId) setSelection([deepId]);
+    // The preceding mousedown already selected the current level; descend one
+    // step past it along the path.
+    const selId = selection.length === 1 ? selection[0] : null;
+    const selIdx = selId ? path.findIndex(n => n.id === selId) : -1;
+    const toSelect = path[selIdx + 1] || deepNode;
+
+    setSelection([toSelect.id]);
+    setSelCtx(toSelect.parentId || null);
+    if (toSelect.type === "text") setEditingText(toSelect.id);
   };
   // Figma-style: single-click selects the *topmost frame ancestor*. Double-click
   // (or already-inside a frame) drills into children.
