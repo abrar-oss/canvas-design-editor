@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import {
   useApp, fillCss, hexToRgba, clamp, fillsOf, fillsPatch, lineHeightCss, paintBg, uid,
+  DEFAULT_LINEAR, DEFAULT_RADIAL,
 } from "./utils.jsx";
 import { exportDesign } from "./exportDesign.js";
 /* global React, Icon, useApp, fillCss, hexToRgba, clamp */
@@ -2639,6 +2640,39 @@ const FRAME_PRESETS = [
   ] },
 ];
 
+// Popup shown when the Fill "+" is clicked — lets the user pick the fill type
+// (defaults to solid color). Mirrors Figma's paint-type chooser.
+function FillTypeMenu({ anchor, onPick, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+  const opts = [
+    { type: "solid",  title: "Solid color",     sw: { background: "#9ca3af" } },
+    { type: "linear", title: "Linear gradient", sw: { background: "linear-gradient(135deg, #ffffff, #111111)" } },
+    { type: "radial", title: "Radial gradient", sw: { background: "radial-gradient(circle at 35% 35%, #ffffff, #111111)" } },
+    { type: "image",  title: "Image",           img: true },
+  ];
+  return (
+    <div className="fill-type-menu" ref={ref} style={{ left: anchor.x, top: anchor.y }} role="menu">
+      {opts.map(o => (
+        <button key={o.type} className="fill-type-opt" title={o.title} onClick={() => onPick(o.type)}>
+          {o.img
+            ? <span className="fill-type-sw fill-type-img"><Icon.Image size={15} /></span>
+            : <span className="fill-type-sw" style={o.sw} />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function RightPanel() {
   const { doc, setDoc, activePageId, selection, setSelection, history, mode, setMode,
           tool, setTool, pan, zoom, setZoom, fitZoom, canvasBg } = useApp();
@@ -2668,6 +2702,7 @@ function RightPanel() {
   const one = selected.length === 1 ? selected[0] : null;
   const [insp, setInsp] = useState("design");
   const [colorPicker, setColorPicker] = useState(null); // { target: "fill"|"stroke", anchor }
+  const [fillTypeMenu, setFillTypeMenu] = useState(null); // { anchor } — fill-type chooser
   // Anchor for the advanced text-settings popover ({x, y}) or null.
   const [textMoreOpen, setTextMoreOpen] = useState(null);
   // Anchor for the advanced stroke-settings popover ({x, y}) or null.
@@ -3467,13 +3502,27 @@ const update = (patch) => {
         };
         const addImageFill = () => pickImage(src =>
           setFills([{ type: "image", src, fit: "cover", opacity: 1, visible: true }, ...fills]));
+        // Add a fill of the chosen type (default: solid color).
+        const addFillOfType = (type) => {
+          if (type === "image") { addImageFill(); return; }
+          if (type === "linear") { setFills([{ ...DEFAULT_LINEAR }, ...fills]); return; }
+          if (type === "radial") { setFills([{ ...DEFAULT_RADIAL }, ...fills]); return; }
+          addFill(); // solid
+        };
+        // The "+" opens a chooser popup so the user picks the fill type.
+        const openFillTypeMenu = (e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setFillTypeMenu({ anchor: { x: r.right - 148, y: r.bottom + 6 } });
+        };
         return (
-        <Section title="Fill" add onAdd={addFill}>
-          <button className="add-image-fill" onClick={addImageFill}>
-            <Icon.Image size={13} /> Add image fill
-          </button>
+        <Section title="Fill" add onAdd={openFillTypeMenu}>
+          {fillTypeMenu && (
+            <FillTypeMenu anchor={fillTypeMenu.anchor}
+              onClose={() => setFillTypeMenu(null)}
+              onPick={(type) => { setFillTypeMenu(null); addFillOfType(type); }} />
+          )}
           {fills.length === 0 && (
-            <div className="paint-row-empty" onClick={addFill}>+ Add solid fill</div>
+            <div className="paint-row-empty" onClick={() => addFillOfType("solid")}>+ Add fill</div>
           )}
           {fills.map((f, i) => {
             const swatchBg = f.type === "solid"
