@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import {
   useApp, SHAPE_DEFAULTS, uid, clamp, round,
-  fillCss, fillsCss, firstVisibleFill, lineHeightCss, penPathD,
+  fillCss, fillsCss, fillsStyle, firstVisibleFill, lineHeightCss, penPathD,
   hexToRgba, paintBg,
 } from "./utils.jsx";
 /* global React, Icon, useApp, SHAPE_DEFAULTS, uid, clamp, round, fillCss, fillsCss, firstVisibleFill, lineHeightCss, penPathD */
@@ -155,6 +155,9 @@ function FigmaTextEditor({ node, sizingMode, textStyle, onCommit }) {
 function renderShape(n, isEditingText, onCommitText) {
   const opacity = n.opacity ?? 1;
   const fill = fillsCss(n);
+  // Background style object (adds cover/contain sizing when an image fill is
+  // present). Spread this instead of `background: fill` on fill-bearing shapes.
+  const fillBg = fillsStyle(n);
   const stroke = n.stroke;
   const strokeStyle = stroke
     ? { stroke: fillCss({ type: "solid", color: stroke.color, opacity: stroke.opacity ?? 1 }),
@@ -261,7 +264,7 @@ function renderShape(n, isEditingText, onCommitText) {
 
   if (n.type === "frame") {
     return (
-      <div style={{ ...common, background: fill, borderRadius: n.radius || 0, overflow: "hidden",
+      <div style={{ ...common, ...fillBg, borderRadius: n.radius || 0, overflow: "hidden",
                     border: borderStrokeCss,
                     ...perSideBorderStyles,
                     boxShadow: combinedShadow,
@@ -276,7 +279,7 @@ function renderShape(n, isEditingText, onCommitText) {
   }
   if (n.type === "rect") {
     return (
-      <div style={{ ...common, background: fill, borderRadius: n.radius || 0,
+      <div style={{ ...common, ...fillBg, borderRadius: n.radius || 0,
              border: borderStrokeCss,
              ...perSideBorderStyles,
              boxShadow: combinedShadow,
@@ -292,7 +295,7 @@ function renderShape(n, isEditingText, onCommitText) {
   }
   if (n.type === "ellipse") {
     return (
-      <div style={{ ...common, background: fill, borderRadius: "50%",
+      <div style={{ ...common, ...fillBg, borderRadius: "50%",
              border: borderStrokeCss,
              ...perSideBorderStyles,
              boxShadow: combinedShadow,
@@ -351,7 +354,7 @@ function renderShape(n, isEditingText, onCommitText) {
             (solid + gradient stacks) render correctly. The same clip
             extends to inner-shadow and overlay effects. */}
         <div style={{ position: "absolute", inset: 0,
-                      background: fill,
+                      ...fillBg,
                       clipPath: `polygon(${pct.join(", ")})`,
                       boxShadow: innerShadow || undefined,
                       backdropFilter: backdropFilterCss,

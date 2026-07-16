@@ -1455,6 +1455,23 @@ input { font-family: inherit; color: inherit; }
   cursor: pointer;
 }
 
+/* Image fill — "Add image fill" button + fit dropdown in the Fill section */
+.add-image-fill {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; margin-bottom: 6px; padding: 6px 8px;
+  border: 1px dashed var(--app-border); border-radius: var(--ui-r-chip);
+  background: transparent; color: var(--app-fg-2);
+  font-size: 11px; cursor: pointer;
+}
+.add-image-fill:hover { background: var(--app-hover); color: var(--app-fg); border-style: solid; }
+.add-image-fill svg { opacity: 0.7; }
+.img-fit-select {
+  flex: 1; min-width: 0; height: 22px; padding: 0 4px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--app-fg); font-size: 11px; border-radius: var(--ui-r-chip); cursor: pointer;
+}
+.img-fit-select:hover { border-color: var(--app-border); }
+
 /* Frame tool — device/size presets panel */
 .frame-presets-hint {
   padding: 12px var(--ui-pad-panel-x) 4px;

@@ -244,6 +244,9 @@ function fillsPatch(arr) {
 function paintBg(p) {
   if (!p || p.visible === false) return null;
   const op = p.opacity ?? 1;
+  if (p.type === "image") {
+    return p.src ? `url("${p.src}")` : null;
+  }
   if (p.type === "solid") {
     const c = hexToRgba(p.color, op);
     return `linear-gradient(${c}, ${c})`;
@@ -268,6 +271,37 @@ function paintBg(p) {
 function fillsCss(n) {
   const arr = fillsOf(n).filter(p => p && p.visible !== false).map(paintBg).filter(Boolean);
   return arr.length ? arr.join(", ") : "transparent";
+}
+
+// Full background style object for a node's fills. When an IMAGE paint is
+// present it also emits per-layer background-size/repeat/position so images
+// cover (or contain) the box instead of tiling at natural size. Use this
+// instead of `background: fillsCss(n)` for shapes that can hold image fills.
+function fillsStyle(n) {
+  const layers = fillsOf(n)
+    .filter(p => p && p.visible !== false)
+    .map(p => ({ p, bg: paintBg(p) }))
+    .filter(l => l.bg);
+  if (!layers.length) return { background: "transparent" };
+  if (!layers.some(l => l.p.type === "image")) {
+    return { background: layers.map(l => l.bg).join(", ") };
+  }
+  const size = [], repeat = [], position = [];
+  layers.forEach(l => {
+    if (l.p.type === "image") {
+      size.push(l.p.fit === "contain" ? "contain" : l.p.fit === "tile" ? "auto" : "cover");
+      repeat.push(l.p.fit === "tile" ? "repeat" : "no-repeat");
+    } else {
+      size.push("auto"); repeat.push("repeat");
+    }
+    position.push("center");
+  });
+  return {
+    backgroundImage: layers.map(l => l.bg).join(", "),
+    backgroundSize: size.join(", "),
+    backgroundRepeat: repeat.join(", "),
+    backgroundPosition: position.join(", "),
+  };
 }
 
 // First visible paint, useful for swatches & single-color readouts.
@@ -364,7 +398,7 @@ export {
   makeInitialDoc, AppCtx, useApp, useHistory,
   resolvePadding, computeAutoLayout,
   hexToRgba, fillCss, lineHeightCss,
-  fillsOf, fillsPatch, paintBg, fillsCss, firstVisibleFill, paintRepColor,
+  fillsOf, fillsPatch, paintBg, fillsCss, fillsStyle, firstVisibleFill, paintRepColor,
   DEFAULT_LINEAR, DEFAULT_RADIAL,
   penPathD, penBounds,
 };

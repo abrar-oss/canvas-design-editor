@@ -3452,10 +3452,28 @@ const update = (patch) => {
           setFills(next);
         };
         const addFill = () => setFills([{ type: "solid", color: "#D9D9D9", opacity: 1, visible: true }, ...fills]);
+        const pickImage = (onData) => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*";
+          input.onchange = () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => onData(reader.result);
+            reader.readAsDataURL(file);
+          };
+          input.click();
+        };
+        const addImageFill = () => pickImage(src =>
+          setFills([{ type: "image", src, fit: "cover", opacity: 1, visible: true }, ...fills]));
         return (
         <Section title="Fill" add onAdd={addFill}>
+          <button className="add-image-fill" onClick={addImageFill}>
+            <Icon.Image size={13} /> Add image fill
+          </button>
           {fills.length === 0 && (
-            <div className="paint-row-empty" onClick={addFill}>+ Add fill</div>
+            <div className="paint-row-empty" onClick={addFill}>+ Add solid fill</div>
           )}
           {fills.map((f, i) => {
             const swatchBg = f.type === "solid"
@@ -3463,21 +3481,34 @@ const update = (patch) => {
               : (paintBg(f) || "transparent");
             const label = f.type === "solid"
               ? (f.color || "#000000").replace("#", "").toUpperCase().slice(0, 6)
-              : f.type === "linear" ? "Linear" : "Radial";
+              : f.type === "linear" ? "Linear" : f.type === "radial" ? "Radial" : "Image";
             return (
               <div className="paint-row" key={i}
                    onMouseEnter={(e) => e.currentTarget.classList.add("hovered")}
                    onMouseLeave={(e) => e.currentTarget.classList.remove("hovered")}>
                 <div className={"fill-row" + (f.visible === false ? " is-hidden" : "")}>
                   <div className="swatch" onClick={(e) => {
+                    if (f.type === "image") { pickImage(src => setFillAt(i, { src })); return; }
                     const r = e.currentTarget.getBoundingClientRect();
                     setColorPicker({ target: "fill", index: i, anchor: { x: r.left - 240, y: r.top } });
                   }}>
-                    <div className="swatch-fill" style={{ background: swatchBg }}/>
+                    <div className="swatch-fill" style={{ background: swatchBg,
+                      backgroundSize: f.type === "image" ? "cover" : undefined,
+                      backgroundPosition: "center" }}/>
                   </div>
                   {f.type === "solid" ? (
                     <HexInput value={f.color}
                            onChange={hex => setFillAt(i, { color: hex })} />
+                  ) : f.type === "image" ? (
+                    <>
+                      <div className="paint-type-label">Image</div>
+                      <select className="img-fit-select" value={f.fit || "cover"}
+                              onChange={e => setFillAt(i, { fit: e.target.value })}>
+                        <option value="cover">Fill</option>
+                        <option value="contain">Fit</option>
+                        <option value="tile">Tile</option>
+                      </select>
+                    </>
                   ) : (
                     <div className="paint-type-label" onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect();
