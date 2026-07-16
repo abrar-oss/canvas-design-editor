@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "./icons.jsx";
 import {
-  useApp, SHAPE_DEFAULTS, uid, clamp, round, hexToRgba, lineHeightCss,
+  useApp, SHAPE_DEFAULTS, uid, clamp, round, hexToRgba, lineHeightCss, penBounds,
 } from "./utils.jsx";
 import { renderShape, Rulers } from "./shapes.jsx";
 /* global React, Icon, useApp, SHAPE_DEFAULTS, uid, clamp, round, renderShape, Rulers, hexToRgba */
