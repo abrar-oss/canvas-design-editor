@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "./icons.jsx";
 import {
-  useApp, fillCss, hexToRgba, clamp, fillsOf, fillsPatch, lineHeightCss, paintBg,
+  useApp, fillCss, hexToRgba, clamp, fillsOf, fillsPatch, lineHeightCss, paintBg, uid,
 } from "./utils.jsx";
 import { exportDesign } from "./exportDesign.js";
 /* global React, Icon, useApp, fillCss, hexToRgba, clamp */
@@ -2618,10 +2618,52 @@ function SelectionColorsSection({ selected, children, activePageId, setDoc, hist
   );
 }
 
+// Figma-style device/frame size presets, grouped by category.
+const FRAME_PRESETS = [
+  { group: "Phone", items: [
+    ["iPhone 16 Pro", 402, 874], ["iPhone 16", 393, 852],
+    ["iPhone SE", 320, 568], ["Android Compact", 412, 917],
+  ] },
+  { group: "Tablet", items: [
+    ["iPad mini", 744, 1133], ["iPad Pro 11\"", 834, 1194], ["Surface Pro 8", 1440, 960],
+  ] },
+  { group: "Desktop", items: [
+    ["Desktop", 1440, 1024], ["MacBook", 1280, 832],
+    ["MacBook Pro 14\"", 1512, 982], ["Full HD", 1920, 1080],
+  ] },
+  { group: "Social", items: [
+    ["Instagram Post", 1080, 1080], ["Instagram Story", 1080, 1920], ["Slide 16:9", 1920, 1080],
+  ] },
+  { group: "Paper", items: [
+    ["A4", 595, 842], ["Letter", 612, 792],
+  ] },
+];
+
 function RightPanel() {
-  const { doc, setDoc, activePageId, selection, history, mode, setMode, zoom, setZoom, fitZoom, canvasBg } = useApp();
+  const { doc, setDoc, activePageId, selection, setSelection, history, mode, setMode,
+          tool, setTool, pan, zoom, setZoom, fitZoom, canvasBg } = useApp();
   const page = doc.pages.find(p => p.id === activePageId);
   const children = page?.children || [];
+
+  // Create a preset frame centered in the current viewport, then select it.
+  const createFramePreset = (name, w, h) => {
+    const surf = document.querySelector(".canvas-scroller");
+    const r = surf && surf.getBoundingClientRect();
+    let cx = w / 2, cy = h / 2;
+    if (r) { cx = (r.width / 2 - pan.x) / zoom; cy = (r.height / 2 - pan.y) / zoom; }
+    const id = uid();
+    const white = { type: "solid", color: "#FFFFFF", opacity: 1 };
+    const frame = {
+      id, type: "frame", name, parentId: null,
+      x: Math.round(cx - w / 2), y: Math.round(cy - h / 2), w, h,
+      fill: white, fills: [white], radius: 0, opacity: 1,
+    };
+    history.snapshot();
+    setDoc(d => ({ ...d, pages: d.pages.map(p => p.id !== activePageId ? p : { ...p, children: [...p.children, frame] }) }));
+    history.commit();
+    setSelection([id]);
+    setTool("select");
+  };
   const selected = children.filter(c => selection.includes(c.id));
   const one = selected.length === 1 ? selected[0] : null;
   const [insp, setInsp] = useState("design");
@@ -2942,6 +2984,26 @@ const update = (patch) => {
     }));
     history.commit();
   };
+
+  // Frame tool active + nothing selected → show device/size presets (Figma).
+  if (!one && selected.length === 0 && tool === "frame") {
+    return (
+      <div className="panel right-panel">
+        <PanelTopBar mode={mode} setMode={setMode} zoom={zoom} setZoom={setZoom} fitZoom={fitZoom} />
+        <div className="frame-presets-hint">Drag on the canvas to draw a frame, or pick a size:</div>
+        {FRAME_PRESETS.map(cat => (
+          <Section key={cat.group} title={cat.group}>
+            {cat.items.map(([name, w, h]) => (
+              <button key={name} className="frame-preset-row" onClick={() => createFramePreset(name, w, h)}>
+                <span className="frame-preset-name">{name}</span>
+                <span className="frame-preset-dim">{w} × {h}</span>
+              </button>
+            ))}
+          </Section>
+        ))}
+      </div>
+    );
+  }
 
   if (!one) {
     // Page properties

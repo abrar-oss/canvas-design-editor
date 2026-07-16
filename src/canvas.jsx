@@ -471,6 +471,13 @@ function Canvas() {
       if (e.shiftKey && (e.key === "A" || e.key === "a") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         if (selection.length) { e.preventDefault(); autoLayoutFromSelection(); return; }
       }
+      // Cmd/Ctrl+Alt+G — Frame selection (wrap in a plain frame). Cmd+Alt+G in
+      // Figma. Guard before the plain Cmd+A / tool shortcuts.
+      if ((e.metaKey || e.ctrlKey) && e.altKey && (e.key === "g" || e.key === "G") && selection.length) {
+        e.preventDefault();
+        frameSelection();
+        return;
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === "d" && selection.length) {
         e.preventDefault();
         history.snapshot();
@@ -662,7 +669,17 @@ function Canvas() {
         // transient session keyed off the selection. Each subsequent arrow
         // press inside the window resets the timer without re-snapshotting.
         history.beginTransient("nudge:" + selection.join(","));
-        selection.forEach(id => {
+        // Move the selected nodes AND all descendants — children of a frame
+        // are stored in world coords, so a frame must carry its subtree.
+        const moveSet = new Set(selection);
+        let grew = true;
+        while (grew) {
+          grew = false;
+          children.forEach(c => {
+            if (c.parentId && moveSet.has(c.parentId) && !moveSet.has(c.id)) { moveSet.add(c.id); grew = true; }
+          });
+        }
+        moveSet.forEach(id => {
           const n = children.find(c => c.id === id);
           if (n) updateNode(id, { x: n.x + dx, y: n.y + dy });
         });
@@ -1579,6 +1596,56 @@ function Canvas() {
         p.children.forEach((c, idx) => { if (!topIds.has(c.id) && idx < firstOrigIdx) insertPos++; });
         const reparented = ordered.map(c => ({ ...c, parentId: frameId, layoutPositioning: undefined }));
         // Number the new frame against existing frames not being wrapped.
+        const named = { ...frame, name: nextAutoName("Frame", "frame", rest) };
+        const out = [...rest.slice(0, insertPos), named, ...reparented, ...rest.slice(insertPos)];
+        return { ...p, children: out };
+      })
+    }));
+    history.commit();
+    setSelection([frameId]);
+    setSelCtx(commonParent);
+  }
+
+  // Frame Selection (Figma: Cmd/Ctrl+Alt+G) — wrap the selected layers in a
+  // PLAIN frame (no auto-layout, padding 0). Children keep their world
+  // positions; the frame's box is their union bbox.
+  function frameSelection() {
+    if (!selection.length) return;
+    const sel = children.filter(c => selection.includes(c.id));
+    if (!sel.length) return;
+    const selSet = new Set(selection);
+    const top = sel.filter(c => !(c.parentId && selSet.has(c.parentId)));
+    if (!top.length) return;
+    const parents = new Set(top.map(c => c.parentId || null));
+    const commonParent = parents.size === 1 ? [...parents][0] : null;
+
+    const boxes = top.map(c => G(c));
+    const x1 = Math.min(...boxes.map(b => b.x));
+    const y1 = Math.min(...boxes.map(b => b.y));
+    const x2 = Math.max(...boxes.map(b => b.x + b.w));
+    const y2 = Math.max(...boxes.map(b => b.y + b.h));
+
+    const frameId = uid();
+    const frame = {
+      id: frameId, type: "frame", name: "Frame",
+      x: x1, y: y1, w: Math.max(1, Math.round(x2 - x1)), h: Math.max(1, Math.round(y2 - y1)),
+      fill: null, fills: [], radius: 0, clipContent: false, opacity: 1,
+      parentId: commonParent,
+    };
+
+    history.snapshot();
+    setDoc(d => ({
+      ...d,
+      pages: d.pages.map(p => {
+        if (p.id !== activePageId) return p;
+        const topIds = new Set(top.map(c => c.id));
+        const rest = p.children.filter(c => !topIds.has(c.id));
+        const firstOrigIdx = Math.min(...top.map(c => p.children.findIndex(x => x.id === c.id)));
+        let insertPos = 0;
+        p.children.forEach((c, idx) => { if (!topIds.has(c.id) && idx < firstOrigIdx) insertPos++; });
+        // Reparent WITHOUT changing world x/y — the renderer draws children at
+        // (child.x - frame.x), so their on-screen position is preserved.
+        const reparented = top.map(c => ({ ...c, parentId: frameId }));
         const named = { ...frame, name: nextAutoName("Frame", "frame", rest) };
         const out = [...rest.slice(0, insertPos), named, ...reparented, ...rest.slice(insertPos)];
         return { ...p, children: out };

@@ -1436,6 +1436,22 @@ input { font-family: inherit; color: inherit; }
 }
 .export-btn[disabled] { opacity: 0.6; cursor: default; }
 
+/* Frame tool — device/size presets panel */
+.frame-presets-hint {
+  padding: 12px var(--ui-pad-panel-x) 4px;
+  font-size: 11px; line-height: 1.4; color: var(--app-fg-3);
+}
+.frame-preset-row {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 6px 8px;
+  border: none; background: transparent;
+  color: var(--app-fg); font-size: 12px;
+  border-radius: var(--ui-r-chip); cursor: pointer; text-align: left;
+}
+.frame-preset-row:hover { background: var(--app-hover); }
+.frame-preset-dim { font-size: 11px; color: var(--app-fg-3); font-family: var(--font-mono); }
+.frame-preset-row:hover .frame-preset-dim { color: var(--app-fg-2); }
+
 .toggle-pill {
   display: inline-flex;
   background: var(--app-panel-2);
