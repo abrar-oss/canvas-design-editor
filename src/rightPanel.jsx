@@ -1063,6 +1063,10 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
     const next = stops.filter((_, j) => j !== i);
     stopsEmit(next, Math.max(0, Math.min(selStopIdx, next.length - 1)));
   };
+  // Edit a stop's colour from its hex field in the stops list.
+  const setStopColor = (i, hex) => {
+    stopsEmit(stops.map((s, j) => (j === i ? { ...s, color: hex } : s)), i);
+  };
   const setStopPos = (i, pos) => {
     const next = stops.map((s, j) => j === i ? { ...s, position: clamp(pos, 0, 1) } : s);
     setStops(next);
@@ -1326,7 +1330,7 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
               <div key={i} className={"cp-stop-row" + (i === selStopIdx ? " sel" : "")}
                    onMouseDown={(e) => { if (!e.target.closest("input,button")) selectStop(i); }}>
                 <span className="cp-stop-swatch" style={{ background: hexToRgba(s.color, s.opacity ?? 1) }}/>
-                <span className="cp-stop-hex">{(s.color || "").replace("#", "").toUpperCase().slice(0, 6)}</span>
+                <HexInput value={s.color} onChange={(hex) => setStopColor(i, hex)} />
                 <div className="cp-input cp-input-narrow">
                   <input type="number" min={0} max={100} value={Math.round((s.position ?? 0) * 100)}
                          onFocus={(e) => e.target.select()}

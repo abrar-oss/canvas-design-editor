@@ -2352,6 +2352,18 @@ input { font-family: inherit; color: inherit; }
   font-feature-settings: "tnum";
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Editable hex field inside a gradient stop row */
+.cp-stop-row .hex-input {
+  flex: 1 1 0; min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid transparent; border-radius: 4px;
+  cursor: text;
+}
+.cp-stop-row:hover .hex-input { border-color: var(--app-border); }
+.cp-stop-row .hex-input:focus {
+  border-color: var(--accent);
+  background: var(--app-panel);
+}
 .cp-stop-remove {
   width: 22px; height: 22px;
   display: inline-flex; align-items: center; justify-content: center;
