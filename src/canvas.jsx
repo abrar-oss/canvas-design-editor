@@ -1751,6 +1751,20 @@ function Canvas() {
           catch (_) { return null; }
         })()
       : null;
+    // Snap targets: every other visible node (excluding this node's own
+    // subtree), using resolved geometry — same edge set the move-drag uses.
+    const selfSubtree = new Set([id]);
+    let grewSelf = true;
+    while (grewSelf) {
+      grewSelf = false;
+      children.forEach(c => {
+        if (c.parentId && selfSubtree.has(c.parentId) && !selfSubtree.has(c.id)) { selfSubtree.add(c.id); grewSelf = true; }
+      });
+    }
+    const snapTargets = children
+      .filter(c => !selfSubtree.has(c.id) && !c.hidden)
+      .map(c => { const g = G(c); return { x: g.x, y: g.y, w: g.w, h: g.h }; });
+
     history.snapshot();
     const move = (ev) => {
       const w = screenToWorld(ev.clientX, ev.clientY);
@@ -1800,6 +1814,39 @@ function Canvas() {
         if (nw < minContent.w) nw = minContent.w;
         if (nh < minContent.h) nh = minContent.h;
       }
+
+      // ---- Snap the dragged edge(s) to nearby node edges (pink guides) ----
+      // Mirrors the move-drag snapping: the edge under the cursor sticks to a
+      // neighbour's left/center/right (or top/middle/bottom). Alt disables it.
+      const snapLines = [];
+      if (!ev.altKey) {
+        const bx0 = hasL ? ax - nw : hasR ? ax : ax - nw / 2;
+        const by0 = hasT ? ay - nh : hasB ? ay : ay - nh / 2;
+        const movingX = hasL ? bx0 : hasR ? bx0 + nw : null;
+        const movingY = hasT ? by0 : hasB ? by0 + nh : null;
+        let bestX = null, bestY = null;
+        snapTargets.forEach(o2 => {
+          if (movingX != null) [o2.x, o2.x + o2.w / 2, o2.x + o2.w].forEach(t => {
+            const diff = t - movingX;
+            if (Math.abs(diff) * zoom < SNAP_PX && (!bestX || Math.abs(diff) < Math.abs(bestX.diff))) bestX = { diff, at: t };
+          });
+          if (movingY != null) [o2.y, o2.y + o2.h / 2, o2.y + o2.h].forEach(t => {
+            const diff = t - movingY;
+            if (Math.abs(diff) * zoom < SNAP_PX && (!bestY || Math.abs(diff) < Math.abs(bestY.diff))) bestY = { diff, at: t };
+          });
+        });
+        if (bestX) { nw = hasL ? nw - bestX.diff : nw + bestX.diff; snapLines.push({ type: "v", at: bestX.at }); }
+        if (bestY) { nh = hasT ? nh - bestY.diff : nh + bestY.diff; snapLines.push({ type: "h", at: bestY.at }); }
+        // With proportions locked, re-derive the other axis so the ratio holds
+        // (the snapped axis leads).
+        if (keepRatio && (bestX || bestY)) {
+          const ratio = orig.w / orig.h;
+          if (bestX) nh = nw / ratio; else nw = nh * ratio;
+        }
+        if (nw < 1) nw = 1;
+        if (nh < 1) nh = 1;
+      }
+      setSnaps(snapLines);
 
       // Derive position from the anchor + new dimensions.
       let nx = hasL ? ax - nw : hasR ? ax : ax - nw / 2;
@@ -1856,7 +1903,7 @@ function Canvas() {
       }
       updateNode(id, patch);
     };
-    const up = () => { history.commit(); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    const up = () => { setSnaps([]); history.commit(); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
   };
