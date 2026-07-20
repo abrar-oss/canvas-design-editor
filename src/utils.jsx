@@ -238,14 +238,76 @@ function fillsPatch(arr) {
   return { fills: arr, fill: arr[0] || null };
 }
 
-// CSS background-image value for a single paint. Wrapping solids in a
-// 2-stop gradient lets them stack with other paints via `background:
-// img1, img2, ...`.
+// Defaults for a `pattern` paint. Kept here so the picker, the renderer and
+// any document migration agree on the shape.
+const PATTERN_DEFAULTS = {
+  kind: "dots",        // dots | stripes | grid | checks | crosshatch | image
+  color: "#111111",    // foreground (ink)
+  bg: "#FFFFFF",       // background (paper); "transparent" is allowed
+  scale: 16,           // tile size in px
+  angle: 45,           // rotation, degrees (stripes / crosshatch / image tile)
+  src: null,           // image tile source (kind === "image")
+};
+
+// CSS `background` LAYERS for a pattern paint. Returns a full shorthand layer
+// list (`<image> <position> / <size> <repeat>`) so a pattern can span several
+// images (a grid needs one gradient per axis) while still travelling through
+// the single-string pipeline that solids/gradients use.
+function patternLayers(p) {
+  const d = { ...PATTERN_DEFAULTS, ...p };
+  const op = p.opacity ?? 1;
+  const s = Math.max(2, d.scale || 16);
+  const ink = d.color === "transparent" ? "transparent" : hexToRgba(d.color, op);
+  const paper = !d.bg || d.bg === "transparent" ? "transparent" : hexToRgba(d.bg, op);
+  const tile = `0 0 / ${s}px ${s}px repeat`;
+  // Paper sits behind every kind — emitted last (CSS paints layers front-to-back).
+  const paperLayer = paper === "transparent" ? null : `linear-gradient(${paper}, ${paper})`;
+  const out = [];
+
+  if (d.kind === "image") {
+    if (!d.src) return [];
+    // Tiled image: `scale` is the tile edge. Angle is not expressible on a
+    // background layer, so image tiles ignore it (the picker hides the field).
+    out.push(`url("${d.src}") ${tile}`);
+    if (paperLayer) out.push(paperLayer);
+    return out;
+  }
+  if (d.kind === "dots") {
+    const r = Math.max(1, s * 0.18);
+    out.push(`radial-gradient(circle at 50% 50%, ${ink} ${r}px, transparent ${r + 0.5}px) ${tile}`);
+  } else if (d.kind === "stripes") {
+    const w = s / 2;
+    out.push(`repeating-linear-gradient(${d.angle}deg, ${ink} 0 ${w}px, transparent ${w}px ${s}px)`);
+  } else if (d.kind === "grid") {
+    const t = Math.max(1, Math.round(s * 0.06));
+    out.push(`linear-gradient(90deg, ${ink} 0 ${t}px, transparent ${t}px) ${tile}`);
+    out.push(`linear-gradient(0deg, ${ink} 0 ${t}px, transparent ${t}px) ${tile}`);
+  } else if (d.kind === "checks") {
+    out.push(`repeating-conic-gradient(${ink} 0% 25%, transparent 0% 50%) ${tile}`);
+  } else if (d.kind === "crosshatch") {
+    const t = Math.max(1, Math.round(s * 0.06));
+    out.push(`repeating-linear-gradient(${d.angle}deg, ${ink} 0 ${t}px, transparent ${t}px ${s}px)`);
+    out.push(`repeating-linear-gradient(${d.angle + 90}deg, ${ink} 0 ${t}px, transparent ${t}px ${s}px)`);
+  }
+  if (paperLayer) out.push(paperLayer);
+  return out;
+}
+
+// CSS `background` value for a single paint — one or more comma-separated
+// shorthand layers. Wrapping solids in a 2-stop gradient lets them stack with
+// other paints via `background: layer1, layer2, ...`.
 function paintBg(p) {
   if (!p || p.visible === false) return null;
   const op = p.opacity ?? 1;
   if (p.type === "image") {
-    return p.src ? `url("${p.src}")` : null;
+    if (!p.src) return null;
+    const size = p.fit === "contain" ? "contain" : p.fit === "tile" ? "auto" : "cover";
+    const repeat = p.fit === "tile" ? "repeat" : "no-repeat";
+    return `url("${p.src}") center / ${size} ${repeat}`;
+  }
+  if (p.type === "pattern") {
+    const layers = patternLayers(p);
+    return layers.length ? layers.join(", ") : null;
   }
   if (p.type === "solid") {
     const c = hexToRgba(p.color, op);
@@ -273,35 +335,11 @@ function fillsCss(n) {
   return arr.length ? arr.join(", ") : "transparent";
 }
 
-// Full background style object for a node's fills. When an IMAGE paint is
-// present it also emits per-layer background-size/repeat/position so images
-// cover (or contain) the box instead of tiling at natural size. Use this
-// instead of `background: fillsCss(n)` for shapes that can hold image fills.
+// Full background style object for a node's fills. Every paint now emits a
+// complete `background` shorthand layer (image/pattern layers carry their own
+// position/size/repeat), so this is a thin wrapper over fillsCss().
 function fillsStyle(n) {
-  const layers = fillsOf(n)
-    .filter(p => p && p.visible !== false)
-    .map(p => ({ p, bg: paintBg(p) }))
-    .filter(l => l.bg);
-  if (!layers.length) return { background: "transparent" };
-  if (!layers.some(l => l.p.type === "image")) {
-    return { background: layers.map(l => l.bg).join(", ") };
-  }
-  const size = [], repeat = [], position = [];
-  layers.forEach(l => {
-    if (l.p.type === "image") {
-      size.push(l.p.fit === "contain" ? "contain" : l.p.fit === "tile" ? "auto" : "cover");
-      repeat.push(l.p.fit === "tile" ? "repeat" : "no-repeat");
-    } else {
-      size.push("auto"); repeat.push("repeat");
-    }
-    position.push("center");
-  });
-  return {
-    backgroundImage: layers.map(l => l.bg).join(", "),
-    backgroundSize: size.join(", "),
-    backgroundRepeat: repeat.join(", "),
-    backgroundPosition: position.join(", "),
-  };
+  return { background: fillsCss(n) };
 }
 
 // First visible paint, useful for swatches & single-color readouts.
@@ -309,11 +347,12 @@ function firstVisibleFill(n) {
   return fillsOf(n).find(p => p && p.visible !== false) || null;
 }
 
-// Representative color (hex) for a paint — picks first stop for gradients.
-// Used for things like the "selection colors" badges.
+// Representative color (hex) for a paint — picks first stop for gradients and
+// the ink color for patterns. Used for things like the "selection colors" badges.
 function paintRepColor(p) {
   if (!p) return null;
   if (p.type === "solid") return p.color;
+  if (p.type === "pattern") return p.color || PATTERN_DEFAULTS.color;
   const s = (p.stops || [])[0];
   return s ? s.color : null;
 }
@@ -333,6 +372,7 @@ const DEFAULT_RADIAL = {
     { color: "#000000", opacity: 1, position: 1 },
   ],
 };
+const DEFAULT_PATTERN = { type: "pattern", ...PATTERN_DEFAULTS, opacity: 1, visible: true };
 
 // Resolve a text node's line-height to a CSS-ready value.
 // - lineHeightUnit "auto" → "normal" (browser auto, scales with font size)
@@ -399,6 +439,6 @@ export {
   resolvePadding, computeAutoLayout,
   hexToRgba, fillCss, lineHeightCss,
   fillsOf, fillsPatch, paintBg, fillsCss, fillsStyle, firstVisibleFill, paintRepColor,
-  DEFAULT_LINEAR, DEFAULT_RADIAL,
+  DEFAULT_LINEAR, DEFAULT_RADIAL, DEFAULT_PATTERN, PATTERN_DEFAULTS, patternLayers,
   penPathD, penBounds,
 };

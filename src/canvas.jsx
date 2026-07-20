@@ -108,8 +108,29 @@ function Canvas() {
   const [snaps, setSnaps] = useState([]);
   const [spaceHeld, setSpaceHeld] = useState(false);
   // Drop indicator while reordering a child inside an auto-layout frame:
-  // { parentId, index, isRow, x, y, len } in world coords (null = inactive).
+  // { parentId, dragId, index, isRow, x, y, len } in world coords (null = inactive).
   const [reorderHint, setReorderHint] = useState(null);
+
+  // Smooth reorder: while a child is being dragged inside an auto-layout
+  // frame, its siblings should EASE into their new slots rather than snap.
+  //
+  // The class is applied imperatively rather than through `nodeTree` on
+  // purpose: that tree is memoized on [children, geom, ...] precisely so
+  // pan/zoom/drag never rebuild node DOM, and reorderHint changes on every
+  // mousemove — threading it through the memo would rebuild the whole tree
+  // per frame and blow the 60 FPS / 1000-node budget. Keying the effect on
+  // parentId alone means it runs once when the drag enters a frame, not per
+  // move. React won't clobber the class: the memo emits an unchanged
+  // className prop, so reconciliation never writes to the DOM node.
+  const reflowParentId = reorderHint?.parentId || null;
+  useEffect(() => {
+    if (!reflowParentId) return;
+    const parentEl = document.querySelector(`[data-node-id="${reflowParentId}"]`);
+    if (!parentEl) return;
+    const kids = Array.from(parentEl.children).filter(el => el.dataset && el.dataset.nodeId);
+    kids.forEach(el => el.classList.add("al-reflow"));
+    return () => kids.forEach(el => el.classList.remove("al-reflow"));
+  }, [reflowParentId]);
   // Z held = zoom tool active (spring-loaded, like spacebar for pan). When released,
   // we restore whatever tool was active before — stashed in this ref.
   const zHeldRef = useRef(false);
@@ -751,6 +772,9 @@ function Canvas() {
             y: Math.round(cy - h / 2),
             w, h,
             src,
+            // Photos should scale proportionally by default — the inspector's
+            // W/H lock can be toggled off to distort intentionally.
+            lockRatio: true,
             _autoName: "Image",
           };
           history.snapshot();
@@ -1311,6 +1335,7 @@ function Canvas() {
         else { const at = g.get(flow[idx].id); pos = isRow ? at.x : at.y; }
         setReorderHint({
           parentId: targetFrame.id, isRow,
+          dragId: node.id,
           x: isRow ? pos : fb.x + pad.l,
           y: isRow ? fb.y + pad.t : pos,
           len: isRow ? (fb.h - pad.t - pad.b) : (fb.w - pad.l - pad.r),
@@ -1530,9 +1555,19 @@ function Canvas() {
     const sel = children.filter(c => selection.includes(c.id));
     if (!sel.length) return;
 
-    // Single frame → enable auto layout in place.
+    // Single frame → enable auto layout in place. Spec defaults: vertical
+    // direction, zero spacing. `gap` is written explicitly (rather than left
+    // undefined) so it doesn't inherit the engine's legacy ?? 10 fallback.
     if (sel.length === 1 && sel[0].type === "frame") {
-      if (!sel[0].autoLayout) { history.snapshot(); updateNode(sel[0].id, { autoLayout: true, direction: sel[0].direction || "column" }); history.commit(); }
+      if (!sel[0].autoLayout) {
+        history.snapshot();
+        updateNode(sel[0].id, {
+          autoLayout: true,
+          direction: sel[0].direction || "column",
+          gap: sel[0].gap ?? 0,
+        });
+        history.commit();
+      }
       return;
     }
 
@@ -1738,14 +1773,22 @@ function Canvas() {
       let nw = hasL ? orig.w - dx : hasR ? orig.w + dx : orig.w;
       let nh = hasT ? orig.h - dy : hasB ? orig.h + dy : orig.h;
 
-      // Shift = constrain to original aspect ratio. Only meaningful for
-      // corner handles (edges constrain to a single axis already). Pick the
-      // axis with the larger relative delta as the "leader".
+      // Constrain to the original aspect ratio when the node's proportion lock
+      // is on (inspector W/H lock) OR Shift is held. Corner drags pick the axis
+      // with the larger delta as the "leader"; an edge drag drives the other
+      // axis so a locked node scales proportionally from any handle.
       const isCorner = (hasL || hasR) && (hasT || hasB);
-      if (ev.shiftKey && isCorner && orig.w > 0 && orig.h > 0) {
+      const keepRatio = (n.lockRatio || ev.shiftKey) && orig.w > 0 && orig.h > 0;
+      if (keepRatio) {
         const ratio = orig.w / orig.h;
-        if (Math.abs(dx) > Math.abs(dy)) nh = nw / ratio;
-        else nw = nh * ratio;
+        if (isCorner) {
+          if (Math.abs(dx) > Math.abs(dy)) nh = nw / ratio;
+          else nw = nh * ratio;
+        } else if (hasL || hasR) {
+          nh = nw / ratio;
+        } else if (hasT || hasB) {
+          nw = nh * ratio;
+        }
       }
 
       // Clamp to minimum size BEFORE deriving position.

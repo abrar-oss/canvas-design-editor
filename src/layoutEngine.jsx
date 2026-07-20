@@ -119,6 +119,37 @@ import { lineHeightCss } from "./utils.jsx";
     return out;
   }
 
+  // Narrowest width a text can occupy while still breaking at word boundaries
+  // (i.e. its widest word). This is the FLOOR for a Fill text: without it a
+  // row whose fixed children already exceed the container hands out a negative
+  // share, the text collapses to a sliver and wraps one letter per line.
+  // Figma's behaviour is to stop shrinking at min-content and let the content
+  // overflow the frame instead.
+  function measureTextMinWidth(n) {
+    const key = "MIN|" + [
+      n.text || "", n.fontFamily || "Inter", n.fontSize || 16, n.fontWeight || 400,
+      n.letterSpacing ?? "", n.textCase ?? "",
+    ].join("|");
+    const hit = textCache.get(key);
+    if (hit) return hit;
+    let out;
+    if (typeof window.measureText === "function") {
+      const tt = n.textCase === "upper" ? "uppercase"
+               : n.textCase === "lower" ? "lowercase"
+               : n.textCase === "title" ? "capitalize" : "none";
+      out = window.measureText(n.text || "", {
+        fontFamily: n.fontFamily, fontSize: n.fontSize, fontWeight: n.fontWeight,
+        lineHeight: lineHeightCss ? lineHeightCss(n) : 1.25,
+        letterSpacing: n.letterSpacing, textTransform: tt, minContent: true,
+      });
+    } else {
+      out = { w: 1, h: n.h };
+    }
+    if (textCache.size > TEXT_CACHE_CAP) textCache.clear();
+    textCache.set(key, out);
+    return out;
+  }
+
   // ============================================================
   // Engine
   // ============================================================
@@ -148,6 +179,16 @@ import { lineHeightCss } from "./utils.jsx";
     function flowKids(node, index) {
       const arr = index.byParent.get(node.id) || [];
       return arr.filter((c) => !isAbsolute(c) && !c.hidden);
+    }
+
+    // Smallest size a Fill child may be squeezed to on the PRIMARY axis.
+    // Text can't go below its widest word; everything else may shrink to a
+    // 1px sliver as before (a rect has no intrinsic content to protect).
+    function minPrimary(k, isRow) {
+      if (isRow && k && k.type === "text" && (k.sizingMode || "auto-wh") !== "fixed") {
+        return Math.max(1, measureTextMinWidth(k).w);
+      }
+      return 1;
     }
 
     // --------------------------------------------------------
@@ -308,9 +349,16 @@ import { lineHeightCss } from "./utils.jsx";
       let leftover = primaryInner - usedPrimary - totalGap;
 
       if (fillPrimaryIdx.length) {
-        // Distribute leftover equally among primary-fill children (min 1px).
-        const share = Math.max(1, leftover / fillPrimaryIdx.length);
-        for (const i of fillPrimaryIdx) kidSizes[i].pSize = share;
+        // Distribute leftover equally among primary-fill children. Each child
+        // is floored at its own MIN-CONTENT rather than a blanket 1px: when
+        // the fixed siblings already fill (or overflow) the row, `leftover`
+        // goes negative and a flat floor crushed every Fill child to a 1px
+        // sliver — a text would then wrap one letter per line. Figma stops
+        // shrinking at min-content and lets the content overflow instead.
+        const share = leftover / fillPrimaryIdx.length;
+        for (const i of fillPrimaryIdx) {
+          kidSizes[i].pSize = Math.max(minPrimary(flow[i], isRow), share);
+        }
         leftover = 0;
       }
 

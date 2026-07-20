@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import {
   useApp, fillCss, hexToRgba, clamp, fillsOf, fillsPatch, lineHeightCss, paintBg, uid,
-  DEFAULT_LINEAR, DEFAULT_RADIAL,
+  DEFAULT_LINEAR, DEFAULT_RADIAL, DEFAULT_PATTERN, PATTERN_DEFAULTS, patternLayers,
 } from "./utils.jsx";
 import { exportDesign } from "./exportDesign.js";
 /* global React, Icon, useApp, fillCss, hexToRgba, clamp */
@@ -224,7 +224,10 @@ function GapField({ n, update }) {
       ) : (
         <div className="input-wrap">
           <span className="prefix" style={{ cursor: "default" }}>{gapGlyph}</span>
-          <NumInputBare value={n.gap ?? 10} min={0} onChange={v => update({ gap: v })}/>
+          {/* No `min` — negative spacing is allowed (items overlap), matching
+              Figma. The engine multiplies gap by (count-1), so negatives flow
+              through the same maths. */}
+          <NumInputBare value={n.gap ?? 10} onChange={v => update({ gap: v })}/>
           <span className="suffix al-gap-caret" style={{ cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
             <Icon.Chevron size={11}/>
           </span>
@@ -624,6 +627,109 @@ function hslToHsv({ h, s, l }) {
 }
 
 // Color picker popover (Figma-style: SV area + Hue + Alpha + mode inputs)
+// ----- Pattern tab -----
+// Preset tiles + the pattern's own fields. Colors are edited by the shared
+// HSV area above: `target` says which of ink/paper that area is driving.
+const PATTERN_KINDS = [
+  ["dots", "Dots"], ["stripes", "Stripes"], ["grid", "Grid"],
+  ["checks", "Checks"], ["crosshatch", "Cross"], ["image", "Image"],
+];
+// Angle is only meaningful for the directional kinds.
+const PATTERN_HAS_ANGLE = { stripes: true, crosshatch: true };
+
+function PatternBlock({ pattern, patch, pickImage, target, setTarget, opacity }) {
+  const p = { ...PATTERN_DEFAULTS, ...pattern };
+  // Preview swatch for a kind button — render at a small fixed scale so every
+  // tile reads clearly regardless of the user's chosen scale.
+  const previewBg = (kind) => {
+    if (kind === "image") {
+      return p.src
+        ? `url("${p.src}") 0 0 / 14px 14px repeat`
+        : "repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 10px 10px repeat";
+    }
+    return patternLayers({ kind, color: "#111111", bg: "#FFFFFF", scale: 12, angle: 45, opacity: 1 }).join(", ");
+  };
+  const paperTransparent = !p.bg || p.bg === "transparent";
+
+  return (
+    <div className="cp-pattern-block">
+      <div className="cp-pat-kinds">
+        {PATTERN_KINDS.map(([k, lbl]) => (
+          <button key={k}
+                  className={"cp-pat-kind" + (p.kind === k ? " on" : "")}
+                  title={lbl}
+                  onClick={() => (k === "image" && !p.src) ? pickImage() : patch({ kind: k })}>
+            <span className="cp-pat-swatch" style={{ background: previewBg(k) }} />
+            <span className="cp-pat-name">{lbl}</span>
+          </button>
+        ))}
+      </div>
+
+      {p.kind === "image" ? (
+        <div className="cp-pat-row">
+          <span className="cp-pat-label">Tile</span>
+          <button className="cp-pat-btn" onClick={pickImage}>
+            {p.src ? "Replace image…" : "Choose image…"}
+          </button>
+        </div>
+      ) : (
+        <div className="cp-pat-row">
+          <span className="cp-pat-label">Colors</span>
+          <div className="cp-pat-targets">
+            <button className={"cp-pat-target" + (target === "color" ? " on" : "")}
+                    title="Edit pattern color"
+                    onClick={() => setTarget("color")}>
+              <span className="cp-pat-dot" style={{ background: hexToRgba(p.color, 1) }} />
+              Ink
+            </button>
+            <button className={"cp-pat-target" + (target === "bg" ? " on" : "")}
+                    title="Edit background color"
+                    onClick={() => { if (paperTransparent) patch({ bg: "#FFFFFF" }); setTarget("bg"); }}>
+              <span className="cp-pat-dot"
+                    style={{ background: paperTransparent
+                      ? "repeating-conic-gradient(#ddd 0% 25%, #fff 0% 50%) 0 0 / 6px 6px repeat"
+                      : hexToRgba(p.bg, 1) }} />
+              Paper
+            </button>
+            <button className={"cp-pat-clear" + (paperTransparent ? " on" : "")}
+                    title="Transparent background"
+                    onClick={() => { patch({ bg: paperTransparent ? "#FFFFFF" : "transparent" }); setTarget("color"); }}>
+              <Icon.Close size={10} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="cp-pat-row">
+        <span className="cp-pat-label">Scale</span>
+        <div className="cp-input cp-input-narrow">
+          <input type="number" min={2} max={200} value={Math.round(p.scale)}
+                 onFocus={(e) => e.target.select()}
+                 onChange={(e) => patch({ scale: clamp(parseFloat(e.target.value) || 2, 2, 200) })} />
+          <span className="cp-suffix">px</span>
+        </div>
+        {PATTERN_HAS_ANGLE[p.kind] && (
+          <>
+            <span className="cp-pat-label">Angle</span>
+            <div className="cp-input cp-input-narrow">
+              <input type="number" min={0} max={359} value={Math.round(p.angle)}
+                     onFocus={(e) => e.target.select()}
+                     onChange={(e) => {
+                       const v = parseFloat(e.target.value) || 0;
+                       patch({ angle: ((v % 360) + 360) % 360 });
+                     }} />
+              <span className="cp-suffix">°</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="cp-pat-preview"
+           style={{ background: patternLayers({ ...p, opacity }).join(", ") || "transparent" }} />
+    </div>
+  );
+}
+
 function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
   const ref = useRef(null);
   const svRef = useRef(null);
@@ -634,8 +740,20 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
   // The picker can edit a Solid OR a Linear/Radial gradient paint. We keep
   // gradient stops + angle as their own state so the user can flip between
   // types without losing data.
-  const initialType = (value?.type === "linear" || value?.type === "radial") ? value.type : "solid";
+  const initialType = (value?.type === "linear" || value?.type === "radial" || value?.type === "pattern")
+    ? value.type : "solid";
   const [paintType, setPaintType] = useState(initialType);
+  // Pattern state lives alongside gradient state so flipping tabs never loses
+  // the user's work. `patTarget` picks which pattern color the HSV area edits.
+  const [pattern, setPattern] = useState(() => ({
+    ...PATTERN_DEFAULTS,
+    ...(value?.type === "pattern" ? value : null),
+  }));
+  const [patTarget, setPatTarget] = useState("color"); // "color" (ink) | "bg" (paper)
+  // Remembers which gradient flavour the Gradient tab returns to.
+  const [gradientType, setGradientType] = useState(initialType === "radial" ? "radial" : "linear");
+  // Top-level tab derived from the paint type (linear+radial share one tab).
+  const tab = (paintType === "linear" || paintType === "radial") ? "gradient" : paintType;
   const [stops, setStops] = useState(() => {
     if (Array.isArray(value?.stops) && value.stops.length >= 2) return value.stops.slice();
     // Seed sensible defaults using the current solid color as first stop.
@@ -650,8 +768,16 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
 
   // The "active" color/opacity drives the HSV / sliders. For a solid paint
   // that's the paint itself; for a gradient it's the currently selected stop.
-  const activeColor = paintType === "solid" ? (value?.color || "#000000") : (stops[selStopIdx]?.color || "#000000");
-  const activeOpacity = paintType === "solid" ? (value?.opacity ?? 1) : (stops[selStopIdx]?.opacity ?? 1);
+  const activeColor =
+    paintType === "solid" ? (value?.color || "#000000")
+    : paintType === "pattern"
+      ? ((patTarget === "bg" ? pattern.bg : pattern.color) === "transparent"
+          ? "#FFFFFF" : (patTarget === "bg" ? pattern.bg : pattern.color) || "#000000")
+    : (stops[selStopIdx]?.color || "#000000");
+  const activeOpacity =
+    paintType === "solid" ? (value?.opacity ?? 1)
+    : paintType === "pattern" ? (value?.opacity ?? 1)
+    : (stops[selStopIdx]?.opacity ?? 1);
 
   // Internal HSV state — keeps hue stable when S or V hit 0.
   const initial = useMemo(() => rgbToHsv(hexToRgb(activeColor)), []);
@@ -709,6 +835,13 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
     if (type === "solid") {
       return { type: "solid", color: nhex, opacity: na, visible };
     }
+    if (type === "pattern") {
+      // The HSV area drives whichever pattern color is targeted; the alpha
+      // slider drives the paint's overall opacity.
+      const base = { ...pattern, ...(overrides.pattern || {}) };
+      if (!overrides.pattern) base[patTarget] = nhex;
+      return { type: "pattern", ...base, opacity: na, visible };
+    }
     const nextStops = (overrides.stops || stops).slice();
     if (!overrides.stops) {
       // Update the selected stop with the new active color/opacity.
@@ -727,7 +860,11 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
     const nhex = rgbToHex(hsvToRgb(nh));
     lastSyncedHex.current = nhex;
     const next = buildPaint(nhex, na, overrides || {});
-    if (next.type !== "solid" && (overrides?.stops == null) && !overrides?.paintType) {
+    if (next.type === "pattern") {
+      // Keep local pattern state in sync with the version we just emitted.
+      const { type, opacity, visible, ...rest } = next;
+      setPattern(rest);
+    } else if (next.type !== "solid" && (overrides?.stops == null) && !overrides?.paintType) {
       // Keep local stops state in sync with the version we just emitted.
       setStops(next.stops);
     }
@@ -830,6 +967,15 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
       input.click();
       return;
     }
+    if (t === "pattern") {
+      setPaintType("pattern");
+      setPatTarget("color");
+      const next = { ...pattern };
+      setHsv(rgbToHsv(hexToRgb(next.color || "#111111")));
+      lastSyncedHex.current = (next.color || "#111111").toUpperCase();
+      onChange({ type: "pattern", ...next, opacity: value?.opacity ?? 1, visible: value?.visible !== false });
+      return;
+    }
     if (t === "solid") {
       // Use the currently-selected stop's color as the solid color.
       const cur = stops[selStopIdx] || stops[0];
@@ -856,10 +1002,33 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
       setSelStopIdx(0);
     }
     setPaintType(t);
+    setGradientType(t); // so the Gradient tab returns to the last flavour used
     const out = { type: t, stops: nextStops, opacity: value?.opacity ?? 1, visible: value?.visible !== false };
     if (t === "linear") out.angle = angle;
     onChange(out);
   };
+  // ---- Pattern helpers ----
+  // Field edits (kind / scale / angle / src) bypass the HSV pipeline — they
+  // patch the pattern directly and re-emit the paint.
+  const patchPattern = (patch) => {
+    const next = { ...pattern, ...patch };
+    setPattern(next);
+    onChange({ type: "pattern", ...next, opacity: value?.opacity ?? 1, visible: value?.visible !== false });
+  };
+  const pickPatternImage = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => patchPattern({ kind: "image", src: reader.result });
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
   const stopsEmit = (nextStops, nextSel = selStopIdx) => {
     setStops(nextStops);
     setSelStopIdx(nextSel);
@@ -1083,19 +1252,42 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
       {/* Header — close button so users have an explicit dismiss path
           (clicking outside still closes, but the X is more discoverable). */}
       <div className="cp-header">
-        <span className="cp-title">{paintType === "solid" ? "Custom color" : paintType === "linear" ? "Linear gradient" : "Radial gradient"}</span>
+        <span className="cp-title">{
+          paintType === "solid" ? "Custom color"
+          : paintType === "linear" ? "Linear gradient"
+          : paintType === "radial" ? "Radial gradient"
+          : "Pattern"
+        }</span>
         <button className="cp-close" onClick={onClose} title="Close">
           <Icon.Close size={12}/>
         </button>
       </div>
       {allowGradient && (
-        <div className="cp-type-pill">
-          {[["solid","Solid"],["linear","Linear"],["radial","Radial"],["image","Image"]].map(([k, lbl]) => (
-            <button key={k} className={paintType === k ? "on" : ""} onClick={() => switchType(k)}>{lbl}</button>
-          ))}
-        </div>
+        <>
+          {/* Top-level paint tabs. "Gradient" groups linear+radial — the
+              specific gradient type is chosen in the sub-row below. */}
+          <div className="cp-type-pill">
+            {[["solid","Solid"],["gradient","Gradient"],["pattern","Pattern"],["image","Image"]].map(([k, lbl]) => (
+              <button key={k}
+                      className={tab === k ? "on" : ""}
+                      onClick={() => switchType(k === "gradient" ? gradientType : k)}>{lbl}</button>
+            ))}
+          </div>
+          {/* Gradient sub-options — shown only on the Gradient tab. */}
+          {tab === "gradient" && (
+            <div className="cp-sub-pill">
+              {[["linear","Linear"],["radial","Radial"]].map(([k, lbl]) => (
+                <button key={k} className={paintType === k ? "on" : ""} onClick={() => switchType(k)}>{lbl}</button>
+              ))}
+            </div>
+          )}
+        </>
       )}
-      {paintType !== "solid" && (
+      {tab === "pattern" && (
+        <PatternBlock pattern={pattern} patch={patchPattern} pickImage={pickPatternImage}
+                      target={patTarget} setTarget={setPatTarget} opacity={value?.opacity ?? 1} />
+      )}
+      {tab === "gradient" && (
         <div className="cp-gradient-block">
           <div className="cp-stops-header">
             <span>Stops</span>
@@ -1312,7 +1504,7 @@ function textCaseToTransform(c) {
 }
 
 // Measure text with given style; returns {w, h}
-function measureText(text, { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing, maxWidth, textTransform }) {
+function measureText(text, { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing, maxWidth, textTransform, minContent }) {
   if (!window.__textMeasurer) {
     const el = document.createElement("div");
     el.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;top:-9999px;left:-9999px;padding:0;margin:0;border:0;";
@@ -1326,9 +1518,18 @@ function measureText(text, { fontFamily, fontSize, fontWeight, lineHeight, lette
   el.style.lineHeight = lineHeight || 1.25;
   el.style.letterSpacing = letterSpacing || "normal";
   el.style.textTransform = textTransform || "none";
-  el.style.whiteSpace = maxWidth ? "pre-wrap" : "pre";
-  el.style.wordWrap = maxWidth ? "break-word" : "normal";
-  el.style.width = maxWidth ? (maxWidth + "px") : "auto";
+  if (minContent) {
+    // Narrowest the text can get while still breaking only at word
+    // boundaries — i.e. the widest single word. Used as the floor for a
+    // Fill child so a cramped auto-layout row can't crush it to nothing.
+    el.style.whiteSpace = "pre-wrap";
+    el.style.wordWrap = "normal";
+    el.style.width = "min-content";
+  } else {
+    el.style.whiteSpace = maxWidth ? "pre-wrap" : "pre";
+    el.style.wordWrap = maxWidth ? "break-word" : "normal";
+    el.style.width = maxWidth ? (maxWidth + "px") : "auto";
+  }
   el.innerText = text || "";
   return { w: el.scrollWidth + 1, h: el.scrollHeight };
 }
@@ -2764,7 +2965,7 @@ function RightPanel() {
   useEffect(() => { setColorPicker(null); setTextMoreOpen(null); setStrokeMoreOpen(null); setIndividualSidesOpen(null); setEffectsOpen(null); }, [selKey]);
 
 // Measure text with given style; returns {w, h}
-function measureText(text, { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing, maxWidth, textTransform }) {
+function measureText(text, { fontFamily, fontSize, fontWeight, lineHeight, letterSpacing, maxWidth, textTransform, minContent }) {
   if (!window.__textMeasurer) {
     const el = document.createElement("div");
     el.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;top:-9999px;left:-9999px;padding:0;margin:0;border:0;";
@@ -2778,9 +2979,18 @@ function measureText(text, { fontFamily, fontSize, fontWeight, lineHeight, lette
   el.style.lineHeight = lineHeight || 1.25;
   el.style.letterSpacing = letterSpacing || "normal";
   el.style.textTransform = textTransform || "none";
-  el.style.whiteSpace = maxWidth ? "pre-wrap" : "pre";
-  el.style.wordWrap = maxWidth ? "break-word" : "normal";
-  el.style.width = maxWidth ? (maxWidth + "px") : "auto";
+  if (minContent) {
+    // Narrowest the text can get while still breaking only at word
+    // boundaries — i.e. the widest single word. Used as the floor for a
+    // Fill child so a cramped auto-layout row can't crush it to nothing.
+    el.style.whiteSpace = "pre-wrap";
+    el.style.wordWrap = "normal";
+    el.style.width = "min-content";
+  } else {
+    el.style.whiteSpace = maxWidth ? "pre-wrap" : "pre";
+    el.style.wordWrap = maxWidth ? "break-word" : "normal";
+    el.style.width = maxWidth ? (maxWidth + "px") : "auto";
+  }
   el.innerText = text || "";
   return { w: el.scrollWidth + 1, h: el.scrollHeight };
 }
@@ -3564,7 +3774,10 @@ const update = (patch) => {
               : (paintBg(f) || "transparent");
             const label = f.type === "solid"
               ? (f.color || "#000000").replace("#", "").toUpperCase().slice(0, 6)
-              : f.type === "linear" ? "Linear" : f.type === "radial" ? "Radial" : "Image";
+              : f.type === "linear" ? "Linear"
+              : f.type === "radial" ? "Radial"
+              : f.type === "pattern" ? `Pattern · ${(f.kind || PATTERN_DEFAULTS.kind).replace(/^./, c => c.toUpperCase())}`
+              : "Image";
             return (
               <div className="paint-row" key={i}
                    onMouseEnter={(e) => e.currentTarget.classList.add("hovered")}
@@ -3575,9 +3788,10 @@ const update = (patch) => {
                     if (f.type === "image") { setImageFillEdit({ index: i, anchor: { x: r.left - 252, y: r.top } }); return; }
                     setColorPicker({ target: "fill", index: i, anchor: { x: r.left - 240, y: r.top } });
                   }}>
-                    <div className="swatch-fill" style={{ background: swatchBg,
-                      backgroundSize: f.type === "image" ? "cover" : undefined,
-                      backgroundPosition: "center" }}/>
+                    {/* paintBg() emits a complete `background` shorthand
+                        (incl. position/size/repeat), so don't add the
+                        longhands here — React warns on mixing the two. */}
+                    <div className="swatch-fill" style={{ background: swatchBg }}/>
                   </div>
                   {f.type === "solid" ? (
                     <HexInput value={f.color}

@@ -9,5 +9,7 @@ import react from "@vitejs/plugin-react";
 // the .jsx files at build time (replacing the prototype's in-browser Babel).
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173 },
+  // Honour a PORT assigned by the launcher; fall back to Vite's default for
+  // plain `npm run dev` runs.
+  server: { port: Number(process.env.PORT) || 5173 },
 });
