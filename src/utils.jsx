@@ -301,9 +301,12 @@ function paintBg(p) {
   const op = p.opacity ?? 1;
   if (p.type === "image") {
     if (!p.src) return null;
+    // Crop = fill the box (cover) but at an adjustable focal position, so the
+    // user chooses which part of the image stays visible.
     const size = p.fit === "contain" ? "contain" : p.fit === "tile" ? "auto" : "cover";
     const repeat = p.fit === "tile" ? "repeat" : "no-repeat";
-    return `url("${p.src}") center / ${size} ${repeat}`;
+    const pos = p.fit === "crop" ? `${p.cropX ?? 50}% ${p.cropY ?? 50}%` : "center";
+    return `url("${p.src}") ${pos} / ${size} ${repeat}`;
   }
   if (p.type === "pattern") {
     const layers = patternLayers(p);

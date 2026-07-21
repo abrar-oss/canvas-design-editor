@@ -2893,12 +2893,15 @@ function ImageFillPopover({ paint, anchor, onChange, onReplace, onClose }) {
   const adj = paint.adjust || {};
   const fitMode = paint.fit || "cover";
   const previewSize = fitMode === "contain" ? "contain" : fitMode === "tile" ? "auto" : "cover";
+  const cropX = paint.cropX ?? 50, cropY = paint.cropY ?? 50;
+  const previewPos = fitMode === "crop" ? `${cropX}% ${cropY}%` : "center";
   return (
     <div ref={ref} className="popover img-fill-popover" style={{ left: pos.left, top: pos.top }}>
       <div className="ifp-head">
         <select className="ifp-fit" value={fitMode} onChange={e => onChange({ fit: e.target.value })}>
           <option value="cover">Fill</option>
           <option value="contain">Fit</option>
+          <option value="crop">Crop</option>
           <option value="tile">Tile</option>
         </select>
         <button className="ifp-replace" title="Replace image" onClick={onReplace}><Icon.Image size={15} /></button>
@@ -2909,9 +2912,25 @@ function ImageFillPopover({ paint, anchor, onChange, onReplace, onClose }) {
           backgroundImage: `url("${paint.src}")`,
           backgroundSize: previewSize,
           backgroundRepeat: fitMode === "tile" ? "repeat" : "no-repeat",
-          backgroundPosition: "center",
+          backgroundPosition: previewPos,
         }} />
       </div>
+      {fitMode === "crop" && (
+        <>
+          <div className="ifp-slider-row">
+            <span className="ifp-slider-label">Position X</span>
+            <input type="range" min={0} max={100} value={Math.round(cropX)}
+                   onChange={e => onChange({ cropX: parseInt(e.target.value, 10) })}
+                   onDoubleClick={() => onChange({ cropX: 50 })} />
+          </div>
+          <div className="ifp-slider-row">
+            <span className="ifp-slider-label">Position Y</span>
+            <input type="range" min={0} max={100} value={Math.round(cropY)}
+                   onChange={e => onChange({ cropY: parseInt(e.target.value, 10) })}
+                   onDoubleClick={() => onChange({ cropY: 50 })} />
+          </div>
+        </>
+      )}
       {IMG_ADJUSTS.map(([key, label]) => (
         <div className="ifp-slider-row" key={key}>
           <span className="ifp-slider-label">{label}</span>
@@ -3502,6 +3521,7 @@ const update = (patch) => {
                     value={n.objectFit || "cover"} onChange={e => update({ objectFit: e.target.value })}>
               <option value="cover">Fill</option>
               <option value="contain">Fit</option>
+              <option value="crop">Crop</option>
               <option value="tile">Tile</option>
             </select>
           </div>

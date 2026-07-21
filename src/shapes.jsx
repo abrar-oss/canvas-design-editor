@@ -530,14 +530,15 @@ function renderShape(n, isEditingText, onCommitText) {
       const fit = n.objectFit || "cover";
       // "tile" repeats the image at natural size — impossible with <img>
       // object-fit, so render every mode as a background for consistency with
-      // image fills (Fill = cover, Fit = contain, Tile = repeat).
+      // image fills (Fill = cover, Fit = contain, Crop = cover@position, Tile).
       const size = fit === "contain" ? "contain" : fit === "tile" ? "auto" : "cover";
+      const pos = fit === "crop" ? `${n.cropX ?? 50}% ${n.cropY ?? 50}%` : "center";
       return (
         <div style={{ ...common, borderRadius: n.radius || 0, overflow: "hidden",
                       backgroundImage: `url("${n.src}")`,
                       backgroundSize: size,
                       backgroundRepeat: fit === "tile" ? "repeat" : "no-repeat",
-                      backgroundPosition: "center" }} />
+                      backgroundPosition: pos }} />
       );
     }
     const colorA = n.placeholderA || "#E5E5E5";
