@@ -231,9 +231,9 @@ function renderShape(n, isEditingText, onCommitText) {
   // frame the children are DOM siblings, so they are NOT affected.
   const imgAdjust = (() => {
     const arr = Array.isArray(n.fills) ? n.fills : (n.fill ? [n.fill] : []);
-    const img = arr.find(p => p && p.type === "image" && p.visible !== false && p.adjust);
-    const a = img && img.adjust;
-    if (!a) return null;
+    const img = arr.find(p => p && p.type === "image" && p.visible !== false);
+    if (!img) return null;
+    const a = img.adjust || {};
     const parts = [];
     if (a.exposure)   parts.push(`brightness(${(1 + a.exposure).toFixed(3)})`);
     if (a.contrast)   parts.push(`contrast(${(1 + a.contrast).toFixed(3)})`);
@@ -243,6 +243,10 @@ function renderShape(n, isEditingText, onCommitText) {
     if (a.tint) parts.push(`hue-rotate(${Math.round(a.tint * 35)}deg)`);
     if (a.highlights) parts.push(`brightness(${(1 + a.highlights * 0.15).toFixed(3)})`);
     if (a.shadows)    parts.push(`brightness(${(1 + a.shadows * 0.1).toFixed(3)}) contrast(${(1 - a.shadows * 0.08).toFixed(3)})`);
+    // Image-fill opacity — the url() background can't fade per-layer, so apply
+    // it on the fill layer (frame children are DOM siblings, unaffected).
+    const op = img.opacity ?? 1;
+    if (op < 1) parts.push(`opacity(${op.toFixed(3)})`);
     return parts.length ? parts.join(" ") : null;
   })();
   // Layer-blur stacks on top of any legacy `n.blur` (used by older docs).
