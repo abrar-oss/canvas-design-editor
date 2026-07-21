@@ -527,14 +527,17 @@ function renderShape(n, isEditingText, onCommitText) {
     // A real pasted/placed image (data URL or remote src) renders as an <img>;
     // otherwise fall back to the placeholder gradient + icon.
     if (n.src) {
+      const fit = n.objectFit || "cover";
+      // "tile" repeats the image at natural size — impossible with <img>
+      // object-fit, so render every mode as a background for consistency with
+      // image fills (Fill = cover, Fit = contain, Tile = repeat).
+      const size = fit === "contain" ? "contain" : fit === "tile" ? "auto" : "cover";
       return (
-        <div style={{ ...common, borderRadius: n.radius || 0, overflow: "hidden" }}>
-          <img src={n.src} alt={n.name || "image"} draggable={false}
-               style={{ width: "100%", height: "100%",
-                        objectFit: n.objectFit || "cover",
-                        display: "block", pointerEvents: "none",
-                        userSelect: "none" }} />
-        </div>
+        <div style={{ ...common, borderRadius: n.radius || 0, overflow: "hidden",
+                      backgroundImage: `url("${n.src}")`,
+                      backgroundSize: size,
+                      backgroundRepeat: fit === "tile" ? "repeat" : "no-repeat",
+                      backgroundPosition: "center" }} />
       );
     }
     const colorA = n.placeholderA || "#E5E5E5";

@@ -3496,6 +3496,16 @@ const update = (patch) => {
                    onChange={e => update({ clipContent: e.target.checked })}/>
           </label>
         )}
+        {n.type === "image" && n.src && (
+          <div className="row" style={{ marginTop: 6 }}>
+            <select className="img-fit-select" style={{ flex: 1, border: "1px solid var(--app-border)", height: 28 }}
+                    value={n.objectFit || "cover"} onChange={e => update({ objectFit: e.target.value })}>
+              <option value="cover">Fill</option>
+              <option value="contain">Fit</option>
+              <option value="tile">Tile</option>
+            </select>
+          </div>
+        )}
       </Section>
 
       <Section title="Position">
