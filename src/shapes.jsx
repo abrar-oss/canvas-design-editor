@@ -157,7 +157,25 @@ function renderShape(n, isEditingText, onCommitText) {
   const fill = fillsCss(n);
   // Background style object (adds cover/contain sizing when an image fill is
   // present). Spread this instead of `background: fill` on fill-bearing shapes.
-  const fillBg = fillsStyle(n);
+  let fillBg = fillsStyle(n);
+  // Crop image fill: rendered as a real <img> layer (object-fit cover) that can
+  // be scaled (zoom) and re-anchored (focal point) — so cropping works even
+  // when the box matches the image's aspect. Excluded from the background.
+  const cropImg = (Array.isArray(n.fills) ? n.fills : (n.fill ? [n.fill] : []))
+    .find(f => f && f.type === "image" && f.visible !== false && f.fit === "crop" && f.src);
+  let cropLayer = null;
+  if (cropImg) {
+    fillBg = fillsStyle({ ...n, fills: (n.fills || (n.fill ? [n.fill] : [])).filter(f => f !== cropImg), fill: null });
+    cropLayer = (
+      <img src={cropImg.src} alt="" draggable={false} style={{
+        position: "absolute", inset: 0, width: "100%", height: "100%",
+        objectFit: "cover",
+        transform: `scale(${cropImg.cropZoom || 1})`,
+        transformOrigin: `${cropImg.cropX ?? 50}% ${cropImg.cropY ?? 50}%`,
+        pointerEvents: "none", userSelect: "none", display: "block",
+      }} />
+    );
+  }
   const stroke = n.stroke;
   const strokeStyle = stroke
     ? { stroke: fillCss({ type: "solid", color: stroke.color, opacity: stroke.opacity ?? 1 }),
@@ -295,6 +313,7 @@ function renderShape(n, isEditingText, onCommitText) {
                     filter: filterCss,
                     backdropFilter: backdropFilterCss,
                     WebkitBackdropFilter: backdropFilterCss }}>
+        {cropLayer}
         {fxOverlayStyle && (
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: "inherit", ...fxOverlayStyle }}/>
         )}
@@ -310,7 +329,8 @@ function renderShape(n, isEditingText, onCommitText) {
              filter: filterCss,
              backdropFilter: backdropFilterCss,
              WebkitBackdropFilter: backdropFilterCss,
-             overflow: fxOverlayStyle ? "hidden" : undefined }}>
+             overflow: (cropLayer || fxOverlayStyle) ? "hidden" : undefined }}>
+        {cropLayer}
         {fxOverlayStyle && (
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: "inherit", ...fxOverlayStyle }}/>
         )}
@@ -326,7 +346,8 @@ function renderShape(n, isEditingText, onCommitText) {
              filter: filterCss,
              backdropFilter: backdropFilterCss,
              WebkitBackdropFilter: backdropFilterCss,
-             overflow: fxOverlayStyle ? "hidden" : undefined }}>
+             overflow: (cropLayer || fxOverlayStyle) ? "hidden" : undefined }}>
+        {cropLayer}
         {fxOverlayStyle && (
           <div style={{ position: "absolute", inset: 0, pointerEvents: "none", borderRadius: "inherit", ...fxOverlayStyle }}/>
         )}

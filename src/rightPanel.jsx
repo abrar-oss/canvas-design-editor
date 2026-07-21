@@ -2908,15 +2908,29 @@ function ImageFillPopover({ paint, anchor, onChange, onReplace, onClose }) {
         <button className="cp-close" onClick={onClose} title="Close"><Icon.Close size={12} /></button>
       </div>
       <div className="ifp-preview">
-        <div className="ifp-preview-img" style={{
-          backgroundImage: `url("${paint.src}")`,
-          backgroundSize: previewSize,
-          backgroundRepeat: fitMode === "tile" ? "repeat" : "no-repeat",
-          backgroundPosition: previewPos,
-        }} />
+        {fitMode === "crop" ? (
+          <img src={paint.src} alt="" draggable={false} style={{
+            width: "100%", height: "100%", objectFit: "cover", display: "block",
+            transform: `scale(${paint.cropZoom ?? 1})`,
+            transformOrigin: `${cropX}% ${cropY}%`,
+          }} />
+        ) : (
+          <div className="ifp-preview-img" style={{
+            backgroundImage: `url("${paint.src}")`,
+            backgroundSize: previewSize,
+            backgroundRepeat: fitMode === "tile" ? "repeat" : "no-repeat",
+            backgroundPosition: previewPos,
+          }} />
+        )}
       </div>
       {fitMode === "crop" && (
         <>
+          <div className="ifp-slider-row">
+            <span className="ifp-slider-label">Zoom</span>
+            <input type="range" min={100} max={400} value={Math.round((paint.cropZoom ?? 1) * 100)}
+                   onChange={e => onChange({ cropZoom: parseInt(e.target.value, 10) / 100 })}
+                   onDoubleClick={() => onChange({ cropZoom: 1 })} />
+          </div>
           <div className="ifp-slider-row">
             <span className="ifp-slider-label">Position X</span>
             <input type="range" min={0} max={100} value={Math.round(cropX)}
