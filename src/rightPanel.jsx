@@ -3811,15 +3811,10 @@ const update = (patch) => {
                     <HexInput value={f.color}
                            onChange={hex => setFillAt(i, { color: hex })} />
                   ) : f.type === "image" ? (
-                    <>
-                      <div className="paint-type-label">Image</div>
-                      <select className="img-fit-select" value={f.fit || "cover"}
-                              onChange={e => setFillAt(i, { fit: e.target.value })}>
-                        <option value="cover">Fill</option>
-                        <option value="contain">Fit</option>
-                        <option value="tile">Tile</option>
-                      </select>
-                    </>
+                    <div className="paint-type-label" onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setImageFillEdit({ index: i, anchor: { x: r.left - 252, y: r.top } });
+                    }}>Image</div>
                   ) : (
                     <div className="paint-type-label" onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect();
