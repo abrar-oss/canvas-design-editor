@@ -614,8 +614,16 @@ function LayerRow({
     line: Icon.Line, polygon: Icon.Polygon, star: Icon.Star,
     text: Icon.Text, image: Icon.Image, pen: Icon.Pen, comment: Icon.Comment,
   }[node.type] || Icon.Rect;
+  // A shape whose fill is an image (e.g. a pasted photo) reads as an image.
+  const hasImageFill = node.type !== "frame" && (
+    Array.isArray(node.fills)
+      ? node.fills.some(f => f && f.type === "image")
+      : !!(node.fill && node.fill.type === "image")
+  );
   // Auto-layout frames get a distinct icon so they're recognizable at a glance.
-  const LayerIcon = (node.type === "frame" && node.autoLayout) ? Icon.AutoLayout : IconKind;
+  const LayerIcon = (node.type === "frame" && node.autoLayout) ? Icon.AutoLayout
+                  : hasImageFill ? Icon.Image
+                  : IconKind;
 
   const cls = [
     "layer",

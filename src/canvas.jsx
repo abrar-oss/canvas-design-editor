@@ -763,15 +763,21 @@ function Canvas() {
             cy = vp ? (vp.height / 2 - pan.y) / zoom : 0;
           }
 
+          // Paste as a RECT with an IMAGE FILL (Figma model). This gives the
+          // pasted image the full image-fill UI — fit (Fill/Fit/Tile),
+          // opacity, and the adjustments popup — identical to "add image fill".
+          const imgPaint = { type: "image", src, fit: "cover", opacity: 1, visible: true };
           const node = {
-            ...SHAPE_DEFAULTS.image,
             id: uid(),
-            type: "image",
+            type: "rect",
             parentId: parent,
             x: Math.round(cx - w / 2),
             y: Math.round(cy - h / 2),
             w, h,
-            src,
+            fills: [imgPaint],
+            fill: imgPaint,
+            radius: 0,
+            opacity: 1,
             // Photos should scale proportionally by default — the inspector's
             // W/H lock can be toggled off to distort intentionally.
             lockRatio: true,
