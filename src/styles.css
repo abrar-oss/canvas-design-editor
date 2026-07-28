@@ -2398,3 +2398,52 @@ input { font-family: inherit; color: inherit; }
   cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* ---- Import JSON modal ---- */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  animation: mm-in var(--dur-fast, 120ms) var(--ease-out, ease);
+}
+.import-modal {
+  width: 460px; max-width: calc(100vw - 32px);
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  border-radius: var(--ui-r-floating);
+  box-shadow: var(--toolbar-shadow);
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.import-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 14px; font-weight: 600; color: var(--app-fg);
+}
+.import-modal-hint { font-size: 11px; line-height: 1.5; color: var(--app-fg-3); }
+.import-modal-hint code {
+  font-family: var(--font-mono); font-size: 10.5px;
+  background: var(--app-hover); padding: 1px 4px; border-radius: 3px;
+}
+.import-modal-textarea {
+  width: 100%; min-height: 200px; resize: vertical;
+  padding: 10px; box-sizing: border-box;
+  border: 1px solid var(--app-border); border-radius: var(--ui-r-ctrl);
+  background: var(--app-bg); color: var(--app-fg);
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.5;
+  outline: none;
+}
+.import-modal-textarea:focus { border-color: var(--accent); }
+.import-modal-error {
+  font-size: 11px; color: var(--semantic-red, #dc2626);
+  background: rgba(220, 38, 38, 0.08); padding: 6px 8px; border-radius: 6px;
+}
+.import-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.import-btn-ghost, .import-btn-primary {
+  height: 30px; padding: 0 14px; border-radius: var(--ui-r-ctrl);
+  font-size: 12px; cursor: pointer; border: 1px solid var(--app-border);
+}
+.import-btn-ghost { background: transparent; color: var(--app-fg); }
+.import-btn-ghost:hover { background: var(--app-hover); }
+.import-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.import-btn-primary:hover { filter: brightness(1.05); }
+.import-btn-primary[disabled] { opacity: 0.5; cursor: default; }

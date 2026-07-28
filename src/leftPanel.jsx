@@ -368,6 +368,48 @@ function LeftPanel() {
     } catch (e) { console.error("Export failed:", e); window.alert("Export failed: " + (e && e.message || e)); }
   };
 
+  // ---- Import design from JSON (editor node format) ----
+  const [importOpen, setImportOpen] = useState(false);
+
+  // Convert a flat list of node objects into fresh, correctly-parented nodes
+  // and append them to the current page.
+  const importNodes = (rawNodes) => {
+    // Guarantee every node has an id, then remap all ids so imports never
+    // collide with existing nodes; parentId references are rewritten to match.
+    rawNodes.forEach((n, i) => { if (!n.id) n.id = "imp_" + i; });
+    const idMap = {};
+    rawNodes.forEach(n => { idMap[n.id] = uid(); });
+    const known = new Set(rawNodes.map(n => n.id));
+    const imported = rawNodes.map(n => {
+      const parentId = n.parentId && known.has(n.parentId) ? idMap[n.parentId] : null;
+      const { _autoName, ...rest } = n;
+      return {
+        opacity: 1, x: 0, y: 0, w: 100, h: 100,
+        ...rest,
+        id: idMap[n.id],
+        parentId,
+        name: n.name || (n.type ? n.type[0].toUpperCase() + n.type.slice(1) : "Layer"),
+      };
+    });
+    history.snapshot();
+    setDoc(d => ({
+      ...d,
+      pages: d.pages.map(p => p.id !== activePageId ? p : { ...p, children: [...p.children, ...imported] }),
+    }));
+    history.commit();
+    setSelection(imported.filter(n => !n.parentId).map(n => n.id));
+  };
+
+  // Parse pasted JSON in a few accepted shapes → node array.
+  const parseImport = (text) => {
+    const data = JSON.parse(text);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.children)) return data.children;
+    if (Array.isArray(data.nodes)) return data.nodes;
+    if (Array.isArray(data.pages)) return data.pages.flatMap(p => p.children || []);
+    throw new Error("Expected an array of nodes, or an object with children / nodes / pages.");
+  };
+
   // Data-driven submenus for the main (logo) menu. `sep` = divider,
   // `shortcut` = right-aligned key hint, `caret` = has a nested menu,
   // `disabled` = greyed/inert, `run` = action (else the row is display-only).
@@ -375,6 +417,7 @@ function LeftPanel() {
     File: [
       { label: "New Design", run: () => setTool("frame") },
       { label: "Image place holder", run: () => setTool("image") },
+      { label: "Import JSON…", run: () => setImportOpen(true) },
       { label: "Export", run: () => exportWholePage() },
     ],
     Edit: [
@@ -596,6 +639,48 @@ function LeftPanel() {
           </div>
         </div>
       )}
+      {importOpen && (
+        <ImportModal parse={parseImport}
+          onImport={importNodes}
+          onClose={() => setImportOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+// Paste editor-format JSON to add nodes to the current page.
+function ImportModal({ parse, onImport, onClose }) {
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const run = () => {
+    let nodes;
+    try { nodes = parse(text); }
+    catch (e) { setError("Couldn't parse: " + (e && e.message ? e.message : e)); return; }
+    if (!nodes || !nodes.length) { setError("No nodes found in the JSON."); return; }
+    onImport(nodes);
+    onClose();
+  };
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="import-modal" onMouseDown={e => e.stopPropagation()}>
+        <div className="import-modal-head">
+          <span>Import design (JSON)</span>
+          <button className="icon-btn" onClick={onClose} title="Close"><Icon.Close size={14} /></button>
+        </div>
+        <div className="import-modal-hint">
+          Paste editor JSON — an array of nodes, or an object with{" "}
+          <code>children</code> / <code>nodes</code> / <code>pages</code>. Nodes are
+          re-ID'd and added to the current page.
+        </div>
+        <textarea className="import-modal-textarea" autoFocus spellCheck={false}
+          placeholder={'[\n  { "type": "frame", "name": "Card", "x": 0, "y": 0, "w": 320, "h": 200,\n    "fills": [{ "type": "solid", "color": "#FFFFFF", "opacity": 1 }] },\n  { "type": "text", "parentId": "…", "x": 20, "y": 20, "text": "Hello" }\n]'}
+          value={text} onChange={e => { setText(e.target.value); setError(""); }} />
+        {error && <div className="import-modal-error">{error}</div>}
+        <div className="import-modal-actions">
+          <button className="import-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="import-btn-primary" onClick={run} disabled={!text.trim()}>Import</button>
+        </div>
+      </div>
     </div>
   );
 }
