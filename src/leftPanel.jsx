@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import { useApp, uid } from "./utils.jsx";
 import { exportDesign } from "./exportDesign.js";
+import { importFromFigma } from "./figmaImport.js";
 /* global React, Icon, useApp, uid */
 const { useState, useMemo, useCallback, useEffect, useRef } = React;
 
@@ -370,6 +371,8 @@ function LeftPanel() {
 
   // ---- Import design from JSON (editor node format) ----
   const [importOpen, setImportOpen] = useState(false);
+  // ---- Import design directly from Figma (URL + token) ----
+  const [figmaImportOpen, setFigmaImportOpen] = useState(false);
 
   // Convert a flat list of node objects into fresh, correctly-parented nodes
   // and append them to the current page.
@@ -417,6 +420,7 @@ function LeftPanel() {
     File: [
       { label: "New Design", run: () => setTool("frame") },
       { label: "Image place holder", run: () => setTool("image") },
+      { label: "Import from Figma…", run: () => setFigmaImportOpen(true) },
       { label: "Import JSON…", run: () => setImportOpen(true) },
       { label: "Export", run: () => exportWholePage() },
     ],
@@ -644,6 +648,69 @@ function LeftPanel() {
           onImport={importNodes}
           onClose={() => setImportOpen(false)} />
       )}
+      {figmaImportOpen && (
+        <FigmaImportModal
+          onImport={importNodes}
+          onClose={() => setFigmaImportOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+// Self-serve Figma import: paste a Figma file link + a personal access token.
+function FigmaImportModal({ onImport, onClose }) {
+  const [url, setUrl] = useState("");
+  const [token, setToken] = useState(() => {
+    try { return localStorage.getItem("figmaToken") || ""; } catch { return ""; }
+  });
+  const [remember, setRemember] = useState(() => {
+    try { return !!localStorage.getItem("figmaToken"); } catch { return false; }
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setError(""); setBusy(true);
+    try {
+      const nodes = await importFromFigma(url, token.trim());
+      try {
+        if (remember) localStorage.setItem("figmaToken", token.trim());
+        else localStorage.removeItem("figmaToken");
+      } catch { /* storage may be blocked */ }
+      onImport(nodes);
+      onClose();
+    } catch (e) {
+      setError(e && e.message ? e.message : String(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="import-modal" onMouseDown={e => e.stopPropagation()}>
+        <div className="import-modal-head">
+          <span>Import from Figma</span>
+          <button className="icon-btn" onClick={onClose} title="Close"><Icon.Close size={14} /></button>
+        </div>
+        <div className="import-modal-hint">
+          Paste a Figma frame link and a personal access token. Generate a token in
+          Figma → <b>Settings → Security → Personal access tokens</b> (read-only is
+          enough). It's sent straight to Figma and never leaves your browser.
+        </div>
+        <input className="figma-import-input" placeholder="https://www.figma.com/design/…?node-id=0-3"
+               value={url} onChange={e => { setUrl(e.target.value); setError(""); }} autoFocus />
+        <input className="figma-import-input" type="password" placeholder="Figma access token (figd_…)"
+               value={token} onChange={e => { setToken(e.target.value); setError(""); }} />
+        <label className="figma-import-remember">
+          <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+          Remember token on this device
+        </label>
+        {error && <div className="import-modal-error">{error}</div>}
+        <div className="import-modal-actions">
+          <button className="import-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="import-btn-primary" onClick={run} disabled={!url.trim() || !token.trim() || busy}>
+            {busy ? "Importing…" : "Import"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

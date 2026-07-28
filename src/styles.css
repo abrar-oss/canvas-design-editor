@@ -2447,3 +2447,17 @@ input { font-family: inherit; color: inherit; }
 .import-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .import-btn-primary:hover { filter: brightness(1.05); }
 .import-btn-primary[disabled] { opacity: 0.5; cursor: default; }
+
+/* ---- Import from Figma modal ---- */
+.figma-import-input {
+  width: 100%; box-sizing: border-box; height: 34px; padding: 0 10px;
+  border: 1px solid var(--app-border); border-radius: var(--ui-r-ctrl);
+  background: var(--app-bg); color: var(--app-fg);
+  font-size: 12px; outline: none;
+}
+.figma-import-input:focus { border-color: var(--accent); }
+.figma-import-remember {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--app-fg-2); cursor: pointer;
+}
+.figma-import-remember input { accent-color: var(--accent); }
