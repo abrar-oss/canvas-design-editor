@@ -652,13 +652,25 @@ function LeftPanel() {
 function ImportModal({ parse, onImport, onClose }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
-  const run = () => {
-    let nodes;
-    try { nodes = parse(text); }
-    catch (e) { setError("Couldn't parse: " + (e && e.message ? e.message : e)); return; }
-    if (!nodes || !nodes.length) { setError("No nodes found in the JSON."); return; }
-    onImport(nodes);
-    onClose();
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      // Accept either pasted JSON or a URL to a JSON file.
+      let raw = text.trim();
+      if (/^https?:\/\//i.test(raw)) {
+        const res = await fetch(raw);
+        if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+        raw = await res.text();
+      }
+      const nodes = parse(raw);
+      if (!nodes || !nodes.length) { setError("No nodes found in the JSON."); setBusy(false); return; }
+      onImport(nodes);
+      onClose();
+    } catch (e) {
+      setError("Couldn't import: " + (e && e.message ? e.message : e));
+      setBusy(false);
+    }
   };
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
@@ -668,17 +680,19 @@ function ImportModal({ parse, onImport, onClose }) {
           <button className="icon-btn" onClick={onClose} title="Close"><Icon.Close size={14} /></button>
         </div>
         <div className="import-modal-hint">
-          Paste editor JSON — an array of nodes, or an object with{" "}
-          <code>children</code> / <code>nodes</code> / <code>pages</code>. Nodes are
-          re-ID'd and added to the current page.
+          Paste editor JSON (an array of nodes, or an object with{" "}
+          <code>children</code> / <code>nodes</code> / <code>pages</code>) — or a
+          URL to a JSON file. Nodes are re-ID'd and added to the current page.
         </div>
         <textarea className="import-modal-textarea" autoFocus spellCheck={false}
-          placeholder={'[\n  { "type": "frame", "name": "Card", "x": 0, "y": 0, "w": 320, "h": 200,\n    "fills": [{ "type": "solid", "color": "#FFFFFF", "opacity": 1 }] },\n  { "type": "text", "parentId": "…", "x": 20, "y": 20, "text": "Hello" }\n]'}
+          placeholder={'Paste JSON, or a URL like https://…/design.json\n\n[\n  { "type": "frame", "name": "Card", "x": 0, "y": 0, "w": 320, "h": 200,\n    "fills": [{ "type": "solid", "color": "#FFFFFF", "opacity": 1 }] },\n  { "type": "text", "parentId": "…", "x": 20, "y": 20, "text": "Hello" }\n]'}
           value={text} onChange={e => { setText(e.target.value); setError(""); }} />
         {error && <div className="import-modal-error">{error}</div>}
         <div className="import-modal-actions">
           <button className="import-btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="import-btn-primary" onClick={run} disabled={!text.trim()}>Import</button>
+          <button className="import-btn-primary" onClick={run} disabled={!text.trim() || busy}>
+            {busy ? "Importing…" : "Import"}
+          </button>
         </div>
       </div>
     </div>
