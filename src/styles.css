@@ -901,7 +901,7 @@ input { font-family: inherit; color: inherit; }
   width: 20px; height: 38px;
   display: flex; align-items: center; justify-content: center;
   border: none; background: transparent;
-  color: var(--app-fg); opacity: 0.55;
+  color: var(--app-fg); opacity: 0.8;
   cursor: pointer;
   border-radius: var(--ui-r-ctrl);
   transition: opacity var(--dur-fast, 120ms) var(--ease-out, ease),
