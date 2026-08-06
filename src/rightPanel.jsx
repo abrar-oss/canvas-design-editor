@@ -3881,7 +3881,17 @@ const update = (patch) => {
           // back" to whatever stale x/y was stored, which is disorienting.
           // Toggling ON just flips the flag.
           if (!n.autoLayout) {
-            update({ autoLayout: true, direction: n.direction || "column" });
+            const patch = { autoLayout: true, direction: n.direction || "column" };
+            // Auto-layout frames start transparent — drop the DEFAULT white
+            // background on convert so there's no unwanted white box. A
+            // user-chosen fill is preserved; add a background from the Fill
+            // section if you want one.
+            const fills = fillsOf(n);
+            const isDefaultWhite = fills.length === 1 && fills[0] && fills[0].type === "solid"
+              && String(fills[0].color || "").toUpperCase() === "#FFFFFF"
+              && (fills[0].opacity ?? 1) === 1;
+            if (isDefaultWhite) Object.assign(patch, fillsPatch([]));
+            update(patch);
             return;
           }
           // Bake the engine-resolved geometry (position AND hug/fill size)
