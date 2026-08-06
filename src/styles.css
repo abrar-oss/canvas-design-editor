@@ -938,6 +938,12 @@ input { font-family: inherit; color: inherit; }
 }
 .tool-menu-item:hover { background: var(--app-hover); }
 .tool-menu-item .shortcut { margin-left: auto; font-size: 11px; color: var(--app-fg-3); font-family: var(--font-mono); }
+/* Leading checkmark column — marks the active tool; empty (but reserved) for
+   the rest so every row's icon + label stay aligned. */
+.tool-menu-check {
+  flex: 0 0 14px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--app-fg); margin-right: -2px;
+}
 
 /* ============================================================
    Right inspector panel

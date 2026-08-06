@@ -5,10 +5,14 @@ import { useApp } from "./utils.jsx";
 const { useState, useEffect, useRef } = React;
 
 const TOOLS = [
-  { id: "select", icon: Icon.Cursor, label: "Move", shortcut: "V" },
-  { id: "scale",  icon: Icon.Scale,  label: "Scale", shortcut: "K" },
+  // Move group — Move / Hand / Scale share one dock slot with a flyout (Figma).
+  { id: "move", group: true, label: "Move", default: "select", options: [
+    { id: "select", icon: Icon.Cursor, label: "Move", shortcut: "V" },
+    { id: "hand",   icon: Icon.Hand,   label: "Hand tool", shortcut: "H" },
+    { id: "scale",  icon: Icon.Scale,  label: "Scale", shortcut: "K" },
+  ]},
   { id: "frame",  icon: Icon.Frame,  label: "Frame", shortcut: "F" },
-  { id: "shape",  group: true, icon: Icon.Rect, label: "Shape", options: [
+  { id: "shape",  group: true, label: "Shape", default: "rect", options: [
     { id: "rect", icon: Icon.Rect, label: "Rectangle", shortcut: "R" },
     { id: "ellipse", icon: Icon.Ellipse, label: "Ellipse", shortcut: "O" },
     { id: "line", icon: Icon.Line, label: "Line", shortcut: "L" },
@@ -18,79 +22,75 @@ const TOOLS = [
   { id: "pen",   icon: Icon.Pen,   label: "Pen", shortcut: "P" },
   { id: "text",  icon: Icon.Text,  label: "Text", shortcut: "T" },
   { id: "image", icon: Icon.Image, label: "Image", shortcut: "I" },
-  { id: "hand",  icon: Icon.Hand,  label: "Hand", shortcut: "H" },
   { id: "comment", icon: Icon.Comment, label: "Comment", shortcut: "C" },
 ];
 
-function ToolDock() {
+// A grouped tool: a primary button (showing the last-used member) with a
+// chevron that opens a flyout of the member tools. Used for both the Move
+// (Move/Hand/Scale) and Shape (Rectangle/Ellipse/…) groups.
+function ToolGroup({ group }) {
   const { tool, setTool } = useApp();
-  const [shapeMenu, setShapeMenu] = useState(false);
-  const [activeShape, setActiveShape] = useState("rect");
-  const shapeGroupRef = useRef(null);
+  const optionIds = group.options.map(o => o.id);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(group.default || optionIds[0]);
+  const ref = useRef(null);
 
-  // Close the shape flyout when clicking anywhere outside the group, or on Escape.
+  // Keep the primary button in sync when a member is activated by shortcut
+  // (V/H/K, R/O/L) or anywhere else — not just via the flyout.
+  useEffect(() => { if (optionIds.includes(tool)) setActive(tool); }, [tool]);
+
+  // Close the flyout on outside click or Escape.
   useEffect(() => {
-    if (!shapeMenu) return;
-    const onDown = (e) => {
-      if (shapeGroupRef.current && !shapeGroupRef.current.contains(e.target)) {
-        setShapeMenu(false);
-      }
-    };
-    const onKey = (e) => { if (e.key === "Escape") setShapeMenu(false); };
+    if (!open) return;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [shapeMenu]);
+  }, [open]);
 
-  // Keep the group button in sync when a shape tool is activated by shortcut
-  // (R/O/L) or anywhere else — not just via the flyout menu.
-  useEffect(() => {
-    if (["rect", "ellipse", "line", "polygon", "star"].includes(tool)) setActiveShape(tool);
-  }, [tool]);
-
-  const ShapeIcon = { rect: Icon.Rect, ellipse: Icon.Ellipse, line: Icon.Line, polygon: Icon.Polygon, star: Icon.Star }[activeShape] || Icon.Rect;
+  const groupActive = optionIds.includes(tool);
+  const ActiveIcon = (group.options.find(o => o.id === active) || group.options[0]).icon;
 
   return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button className={`tool-btn has-caret ${groupActive ? "active" : ""}`}
+              onClick={() => setTool(active)} title={group.label}>
+        <ActiveIcon size={20} />
+        <span className={`tool-caret ${open ? "open" : ""}`}
+              onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}>
+          <Icon.Chevron size={14} />
+        </span>
+      </button>
+      {open && (
+        <div className="tool-menu">
+          {group.options.map(opt => {
+            const I = opt.icon;
+            return (
+              <div key={opt.id}
+                   className="tool-menu-item"
+                   onClick={() => { setActive(opt.id); setTool(opt.id); setOpen(false); }}>
+                <span className="tool-menu-check">{tool === opt.id ? <Icon.Check size={13} /> : null}</span>
+                <I size={16} /> {opt.label}
+                <span className="shortcut">{opt.shortcut}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ToolDock() {
+  const { tool, setTool } = useApp();
+  return (
     <div className="tool-dock">
-      {TOOLS.map((t, i) => {
-        if (t.group) {
-          const active = ["rect","ellipse","line","polygon","star"].includes(tool);
-          return (
-            <div key={t.id} ref={shapeGroupRef} style={{ position: "relative" }}>
-              <button
-                className={`tool-btn has-caret ${active ? "active" : ""}`}
-                onClick={() => setTool(activeShape)}
-                title={t.label}
-              >
-                <ShapeIcon size={20} />
-                <span
-                  className={`tool-caret ${shapeMenu ? "open" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setShapeMenu(v => !v); }}
-                >
-                  <Icon.Chevron size={14} />
-                </span>
-              </button>
-              {shapeMenu && (
-                <div className="tool-menu">
-                  {t.options.map(opt => {
-                    const I = opt.icon;
-                    return (
-                      <div key={opt.id}
-                           className="tool-menu-item"
-                           onClick={() => { setActiveShape(opt.id); setTool(opt.id); setShapeMenu(false); }}>
-                        <I size={14} /> {opt.label}
-                        <span className="shortcut">{opt.shortcut}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        }
+      {TOOLS.map(t => {
+        if (t.group) return <ToolGroup key={t.id} group={t} />;
         const Ic = t.icon;
         return (
           <button key={t.id}
