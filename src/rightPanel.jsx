@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import {
   useApp, fillCss, hexToRgba, clamp, fillsOf, fillsPatch, lineHeightCss, paintBg, uid,
-  DEFAULT_LINEAR, DEFAULT_RADIAL, DEFAULT_PATTERN, PATTERN_DEFAULTS, patternLayers,
+  DEFAULT_LINEAR, DEFAULT_RADIAL, DEFAULT_PATTERN, PATTERN_DEFAULTS, patternLayers, scaleNodePatch,
 } from "./utils.jsx";
 import { exportDesign } from "./exportDesign.js";
 /* global React, Icon, useApp, fillCss, hexToRgba, clamp */
@@ -108,6 +108,29 @@ function NumInput({ value, onChange, prefix, suffix, min, max, step = 1, style, 
         }}
       />
       {suffix && <span className="suffix">{suffix}</span>}
+    </div>
+  );
+}
+
+// Scale field — a RELATIVE percentage scaler. Always shows 100; typing a value
+// scales the target by value/100 and snaps straight back to 100 (it's a
+// one-shot factor, not a stored dimension). Enter or blur applies.
+function ScaleField({ onScale }) {
+  const [v, setV] = useState("100");
+  const commit = () => {
+    const n = evalNumeric(v, NaN);
+    if (!isNaN(n) && n > 0) onScale(n / 100);
+    setV("100");
+  };
+  return (
+    <div className="input-wrap">
+      <span className="prefix" style={{ cursor: "default" }}><Icon.Scale size={11}/></span>
+      <input type="text" value={v}
+             onChange={e => setV(e.target.value)}
+             onFocus={e => e.target.select()}
+             onBlur={commit}
+             onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}/>
+      <span className="suffix">%</span>
     </div>
   );
 }
@@ -3378,6 +3401,37 @@ const update = (patch) => {
     history.commit();
   };
 
+  // Scale the current selection (and every descendant) by a factor about the
+  // selection's center. Scales size AND size-dependent props (font size, stroke
+  // weight, radius, gaps/padding) — the panel counterpart to the Scale tool.
+  const scaleSelection = (factor) => {
+    if (!(factor > 0) || Math.abs(factor - 1) < 1e-4 || !selection.length) return;
+    // Expand to the full subtree of the selected nodes.
+    const ids = new Set(selection);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      children.forEach(c => { if (c.parentId && ids.has(c.parentId) && !ids.has(c.id)) { ids.add(c.id); grew = true; } });
+    }
+    // Anchor at the center of the selected (top-level) nodes' bounding box.
+    const sel = selected;
+    const xs = sel.map(s => s.x), ys = sel.map(s => s.y);
+    const x2 = sel.map(s => s.x + s.w), y2 = sel.map(s => s.y + s.h);
+    const ax = (Math.min(...xs) + Math.max(...x2)) / 2;
+    const ay = (Math.min(...ys) + Math.max(...y2)) / 2;
+    history.snapshot();
+    setDoc(d => ({
+      ...d,
+      pages: d.pages.map(p => p.id !== activePageId ? p : {
+        ...p,
+        children: p.children.map(c => ids.has(c.id)
+          ? { ...c, ...scaleNodePatch(c, { x: c.x, y: c.y, w: c.w, h: c.h }, factor, ax, ay) }
+          : c),
+      }),
+    }));
+    history.commit();
+  };
+
   // Frame tool active + nothing selected → show device/size presets (Figma).
   if (!one && selected.length === 0 && tool === "frame") {
     return (
@@ -3494,6 +3548,12 @@ const update = (patch) => {
                 ) : (
                   <div className="input-wrap" style={{ visibility: "hidden", pointerEvents: "none" }} aria-hidden="true"/>
                 )}
+              </div>
+              {/* Scale — type a % to resize the whole selection (and contents)
+                  about its center. Snaps back to 100 (it's a relative factor). */}
+              <div className="row">
+                <ScaleField onScale={scaleSelection}/>
+                <div className="input-wrap" style={{ visibility: "hidden", pointerEvents: "none" }} aria-hidden="true"/>
               </div>
               <div style={{ fontSize: 11, color: "var(--app-fg-3)", marginTop: 8, lineHeight: 1.4 }}>
                 Arrow keys nudge all · Delete removes all · Drag the selection to move together.
@@ -3733,7 +3793,9 @@ const update = (patch) => {
         <LayoutSizeRow n={n} update={update} children={children} resolved={resolvedGeom} resizeTextSafe={resizeTextSafe}/>
         <div className="row">
           <NumInput prefix={<Icon.Corners size={11}/>} value={n.radius || 0} min={0} onChange={v => update({ radius: v })}/>
-          <div className="input-wrap" style={{ visibility: "hidden", pointerEvents: "none" }} aria-hidden="true"/>
+          {/* Scale — type a % to resize this layer and its contents about its
+              center (font size, stroke, radius, children). Relative; resets to 100. */}
+          <ScaleField onScale={scaleSelection}/>
         </div>
         {parentIsAL && (
           <div className="row" style={{ marginTop: 2 }}>

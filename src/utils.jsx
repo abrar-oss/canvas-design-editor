@@ -433,13 +433,59 @@ function penBounds(points) {
 }
 
 // ============================================================
+// Scale — proportional resize of a node that also scales its intrinsic,
+// size-dependent properties (corner radius, stroke weight, text sizing,
+// shadow offsets/blur, auto-layout gap/padding). Positions are scaled about
+// a world-space anchor (ax, ay) so a whole subtree scales as one rigid body
+// when every member is passed through with the SAME s/ax/ay.
+//
+//   box  — the node's ORIGINAL world box { x, y, w, h } (captured at drag start
+//          or read from stored coords) so repeated calls never compound.
+//   s    — uniform scale factor (1 = no change).
+//
+// Returns a patch to spread onto the node.
+// ============================================================
+function scaleNodePatch(node, box, s, ax, ay) {
+  const k = node;
+  const patch = {
+    x: Math.round(ax + (box.x - ax) * s),
+    y: Math.round(ay + (box.y - ay) * s),
+    w: Math.max(1, Math.round(box.w * s)),
+    h: Math.max(1, Math.round(box.h * s)),
+  };
+  const r2 = (v) => Math.round(v * 100) / 100;
+  if (k.radius) patch.radius = Math.max(0, Math.round(k.radius * s));
+  if (k.stroke && k.stroke.weight) patch.stroke = { ...k.stroke, weight: Math.max(0.1, r2(k.stroke.weight * s)) };
+  if (k.type === "text") {
+    if (k.fontSize) patch.fontSize = Math.max(1, r2(k.fontSize * s));
+    if (k.lineHeight && k.lineHeightUnit === "px") patch.lineHeight = r2(k.lineHeight * s);
+    if (k.letterSpacing) patch.letterSpacing = r2(k.letterSpacing * s);
+    if (k.paragraphSpacing) patch.paragraphSpacing = r2(k.paragraphSpacing * s);
+  }
+  if (k.shadow) {
+    patch.shadow = { ...k.shadow,
+      x: r2((k.shadow.x || 0) * s), y: r2((k.shadow.y || 0) * s),
+      blur: r2((k.shadow.blur || 0) * s), spread: r2((k.shadow.spread || 0) * s) };
+  }
+  if (k.type === "frame" && k.autoLayout) {
+    if (k.gap != null) patch.gap = Math.round((k.gap || 0) * s);
+    if (k.paddingX != null) patch.paddingX = Math.round(k.paddingX * s);
+    if (k.paddingY != null) patch.paddingY = Math.round(k.paddingY * s);
+    ["paddingTop", "paddingRight", "paddingBottom", "paddingLeft"].forEach(key => {
+      if (k[key] != null) patch[key] = Math.round(k[key] * s);
+    });
+  }
+  return patch;
+}
+
+// ============================================================
 // Export globals for other scripts
 // ============================================================
 export {
   uid, clamp, round, isFrame, rand,
   DEFAULT_FILL, DEFAULT_STROKE, SHAPE_DEFAULTS,
   makeInitialDoc, AppCtx, useApp, useHistory,
-  resolvePadding, computeAutoLayout,
+  resolvePadding, computeAutoLayout, scaleNodePatch,
   hexToRgba, fillCss, lineHeightCss,
   fillsOf, fillsPatch, paintBg, fillsCss, fillsStyle, firstVisibleFill, paintRepColor,
   DEFAULT_LINEAR, DEFAULT_RADIAL, DEFAULT_PATTERN, PATTERN_DEFAULTS, patternLayers,

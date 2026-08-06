@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "./icons.jsx";
 import {
-  useApp, SHAPE_DEFAULTS, uid, clamp, round, hexToRgba, lineHeightCss, penBounds,
+  useApp, SHAPE_DEFAULTS, uid, clamp, round, hexToRgba, lineHeightCss, penBounds, scaleNodePatch,
 } from "./utils.jsx";
 import { renderShape, Rulers } from "./shapes.jsx";
 /* global React, Icon, useApp, SHAPE_DEFAULTS, uid, clamp, round, renderShape, Rulers, hexToRgba */
@@ -610,7 +610,7 @@ function Canvas() {
       }
       // Tool shortcuts (single-letter, no modifiers). Z is handled above as a
       // hold-to-zoom modifier, so it's intentionally not in this map.
-      const keyMap = { v: "select", h: "hand", f: "frame", r: "rect", o: "ellipse", l: "line",
+      const keyMap = { v: "select", k: "scale", h: "hand", f: "frame", r: "rect", o: "ellipse", l: "line",
                        p: "pen", t: "text", c: "comment", i: "image" };
       if (keyMap[e.key?.toLowerCase()] && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
         setTool(keyMap[e.key.toLowerCase()]);
@@ -903,9 +903,11 @@ function Canvas() {
       return;
     }
 
-    if (tool === "select") {
+    if (tool === "select" || tool === "scale") {
       // FIGMA-STYLE SELECTION
       // ---------------------
+      // The Scale tool (K) shares selection behaviour with Move; only the
+      // resize handles differ (they scale the contents, wired below).
       // The selection has a "context" (selCtx): the frame whose contents we're
       // editing. Initially null (page root). A click selects the topmost node
       // whose parent === selCtx and which contains the cursor.
@@ -1914,6 +1916,68 @@ function Canvas() {
     window.addEventListener("mouseup", up);
   };
 
+  // ---------- Scale tool (K): proportional resize of the selection AND its
+  // contents. Dragging a handle scales the whole subtree about the opposite
+  // corner/edge as one rigid body — font sizes, stroke weights, corner radii,
+  // gaps/padding and every child position/size scale by the same factor. ----------
+  const startScale = (e, handleId) => {
+    e.stopPropagation();
+    if (selection.length !== 1) return;
+    const id = selection[0];
+    const n = children.find(c => c.id === id);
+    if (!n) return;
+    const orig = G(n);
+    if (orig.w <= 0 || orig.h <= 0) return;
+    const startWorld = screenToWorld(e.clientX, e.clientY);
+
+    // Capture the ORIGINAL box + node object of the whole subtree so repeated
+    // mousemoves recompute from the start state (never compounding).
+    const subtree = new Set([id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      children.forEach(c => { if (c.parentId && subtree.has(c.parentId) && !subtree.has(c.id)) { subtree.add(c.id); grew = true; } });
+    }
+    const origById = {};
+    children.forEach(c => { if (subtree.has(c.id)) origById[c.id] = { node: c, box: G(c) }; });
+
+    const hasL = handleId.includes("l"), hasR = handleId.includes("r");
+    const hasT = handleId.includes("t"), hasB = handleId.includes("b");
+    // Anchor = the corner/edge OPPOSITE the dragged handle (stays fixed).
+    const ax = hasL ? orig.x + orig.w : orig.x;
+    const ay = hasT ? orig.y + orig.h : orig.y;
+
+    history.snapshot();
+    const move = (ev) => {
+      const w = screenToWorld(ev.clientX, ev.clientY);
+      const dx = w.x - startWorld.x, dy = w.y - startWorld.y;
+      const nw = hasL ? orig.w - dx : hasR ? orig.w + dx : orig.w;
+      const nh = hasT ? orig.h - dy : hasB ? orig.h + dy : orig.h;
+      // Uniform factor — corner drags follow the larger delta; edge drags use
+      // that axis. Scale is always proportional (Figma's Scale tool).
+      const sx = nw / orig.w, sy = nh / orig.h;
+      let s;
+      if ((hasL || hasR) && (hasT || hasB)) s = Math.abs(dx) >= Math.abs(dy) ? sx : sy;
+      else if (hasL || hasR) s = sx;
+      else s = sy;
+      if (!(s > 0.02)) s = 0.02; // floor so it can't collapse/invert
+
+      setDoc(d => ({
+        ...d,
+        pages: d.pages.map(p => p.id !== activePageId ? p : {
+          ...p,
+          children: p.children.map(c => {
+            const o = origById[c.id];
+            return o ? { ...c, ...scaleNodePatch(o.node, o.box, s, ax, ay) } : c;
+          }),
+        }),
+      }));
+    };
+    const up = () => { history.commit(); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+
   // Double-click: Figma-style DRILL-DOWN. Single-click selects the outermost
   // frame; each double-click descends one level toward the element under the
   // cursor (entering that frame as the selection context), until it reaches the
@@ -2445,7 +2509,7 @@ function Canvas() {
                   const oy = cyScreen - (hy - hs / 2);
                   return (
                     <div key={id} className={`handle ${id}`}
-                         onMouseDown={(e) => startResize(e, id)}
+                         onMouseDown={(e) => (tool === "scale" ? startScale : startResize)(e, id)}
                          style={{
                            left: hx - hs/2, top: hy - hs/2,
                            width: hs, height: hs,

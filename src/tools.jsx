@@ -6,6 +6,7 @@ const { useState, useEffect, useRef } = React;
 
 const TOOLS = [
   { id: "select", icon: Icon.Cursor, label: "Move", shortcut: "V" },
+  { id: "scale",  icon: Icon.Scale,  label: "Scale", shortcut: "K" },
   { id: "frame",  icon: Icon.Frame,  label: "Frame", shortcut: "F" },
   { id: "shape",  group: true, icon: Icon.Rect, label: "Shape", options: [
     { id: "rect", icon: Icon.Rect, label: "Rectangle", shortcut: "R" },

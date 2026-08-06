@@ -26,6 +26,8 @@ const Icon = {
   Rect:       p => <Svg {...p}><rect x="4" y="4" width="16" height="16" rx="1"/></Svg>,
   Ellipse:    p => <Svg {...p}><circle cx="12" cy="12" r="8"/></Svg>,
   Line:       p => <Svg {...p}><path d="M5 19L19 5"/></Svg>,
+  // Scale tool — a corner with a diagonal double arrow (proportional resize).
+  Scale:      p => <Svg {...p}><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></Svg>,
   Polygon:    p => <Svg {...p}><path d="M12 3l2.6 6.3 6.9.6-5.2 4.5 1.6 6.6L12 17.7 6.1 21l1.6-6.6L2.5 9.9l6.9-.6z"/></Svg>,
   Triangle:   p => <Svg {...p}><path d="M12 4l9 16H3z"/></Svg>,
   Pen:        p => <Svg {...p}><path d="M4 20l4-1 10-10a2.83 2.83 0 0 0-4-4L4 15v5zM13 7l4 4"/></Svg>,
