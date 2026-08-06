@@ -69,16 +69,25 @@ const Icon = {
   AlignTop:    p => <Svg {...p}><path d="M4 4h16M7 8h4v10H7zM13 8h4v7h-4z"/></Svg>,
   AlignMid:    p => <Svg {...p}><path d="M4 12h16M7 7h4v10H7zM13 9h4v6h-4z"/></Svg>,
   AlignBottom: p => <Svg {...p}><path d="M4 20h16M7 6h4v10H7zM13 9h4v7h-4z"/></Svg>,
-  // Distribute icons: equal-gap layout of 3 boxes along an axis.
+  // Distribute icons: three equally-spaced boxes along an axis. The boxes are
+  // inset from the edges so there is whitespace around them (rather than solid
+  // full-height bars) — reading as "objects distributed with equal spacing".
   DistributeH: p => <SvgFill {...p}>
-    <path d="M2 22V2H4V22H2ZM10.5 17V7H13.5V17H10.5ZM20 22V2H22V22H20Z"/>
+    <rect x="3.75"  y="5" width="3" height="14" rx="1"/>
+    <rect x="10.5"  y="5" width="3" height="14" rx="1"/>
+    <rect x="17.25" y="5" width="3" height="14" rx="1"/>
   </SvgFill>,
   DistributeV: p => <SvgFill {...p}>
-    <path d="M2 22V20H22V22H2ZM7 13.5V10.5H17V13.5H7ZM2 4V2H22V4H2Z"/>
+    <rect x="5" y="3.75"  width="14" height="3" rx="1"/>
+    <rect x="5" y="10.5"  width="14" height="3" rx="1"/>
+    <rect x="5" y="17.25" width="14" height="3" rx="1"/>
   </SvgFill>,
-  // Tidy — wand/sparkle suggesting auto layout.
+  // Tidy — 2×2 grid of boxes with whitespace (auto-arrange into a grid).
   Tidy: p => <SvgFill {...p}>
-    <path d="M8.5 10.5H5C4.45 10.5 3.97917 10.3042 3.5875 9.9125C3.19583 9.52083 3 9.05 3 8.5V5C3 4.45 3.19583 3.97917 3.5875 3.5875C3.97917 3.19583 4.45 3 5 3H8.5C9.05 3 9.52083 3.19583 9.9125 3.5875C10.3042 3.97917 10.5 4.45 10.5 5V8.5C10.5 9.05 10.3042 9.52083 9.9125 9.9125C9.52083 10.3042 9.05 10.5 8.5 10.5ZM5 8.5H8.5V5H5V8.5ZM8.5 21H5C4.45 21 3.97917 20.8042 3.5875 20.4125C3.19583 20.0208 3 19.55 3 19V15.5C3 14.95 3.19583 14.4792 3.5875 14.0875C3.97917 13.6958 4.45 13.5 5 13.5H8.5C9.05 13.5 9.52083 13.6958 9.9125 14.0875C10.3042 14.4792 10.5 14.95 10.5 15.5V19C10.5 19.55 10.3042 20.0208 9.9125 20.4125C9.52083 20.8042 9.05 21 8.5 21ZM5 19H8.5V15.5H5V19ZM19 10.5H15.5C14.95 10.5 14.4792 10.3042 14.0875 9.9125C13.6958 9.52083 13.5 9.05 13.5 8.5V5C13.5 4.45 13.6958 3.97917 14.0875 3.5875C14.4792 3.19583 14.95 3 15.5 3H19C19.55 3 20.0208 3.19583 20.4125 3.5875C20.8042 3.97917 21 4.45 21 5V8.5C21 9.05 20.8042 9.52083 20.4125 9.9125C20.0208 10.3042 19.55 10.5 19 10.5ZM15.5 8.5H19V5H15.5V8.5ZM19 21H15.5C14.95 21 14.4792 20.8042 14.0875 20.4125C13.6958 20.0208 13.5 19.55 13.5 19V15.5C13.5 14.95 13.6958 14.4792 14.0875 14.0875C14.4792 13.6958 14.95 13.5 15.5 13.5H19C19.55 13.5 20.0208 13.6958 20.4125 14.0875C20.8042 14.4792 21 14.95 21 15.5V19C21 19.55 20.8042 20.0208 20.4125 20.4125C20.0208 20.8042 19.55 21 19 21ZM15.5 19H19V15.5H15.5V19Z"/>
+    <rect x="5"  y="5"  width="6" height="6" rx="1.2"/>
+    <rect x="13" y="5"  width="6" height="6" rx="1.2"/>
+    <rect x="5"  y="13" width="6" height="6" rx="1.2"/>
+    <rect x="13" y="13" width="6" height="6" rx="1.2"/>
   </SvgFill>,
 
   // Solid filled align variants for inspector position grid
