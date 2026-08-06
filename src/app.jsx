@@ -108,6 +108,18 @@ function App() {
 
   const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
   const [showTweaksPanel, setShowTweaksPanel] = useState(false);
+  // Cmd/Ctrl + \ hides both side panels (Figma's "hide UI"), maximising the canvas.
+  const [panelsHidden, setPanelsHidden] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "\\" || e.code === "Backslash")) {
+        e.preventDefault();
+        setPanelsHidden(v => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // History (per-tab — each tab has its own undo timeline)
   const history = useHistory(activeTabId, docs, setDocs);
@@ -204,12 +216,12 @@ function App() {
               onTabAdd={onTabAdd}
               onTabClose={onTabClose}>
         <div className="body-area">
-          <LeftPanel />
+          {!panelsHidden && <LeftPanel />}
           <div style={{ position: "relative", flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <Canvas />
             <ToolDock />
           </div>
-          <RightPanel />
+          {!panelsHidden && <RightPanel />}
         </div>
       </Chrome>
       {showTweaksPanel && (
