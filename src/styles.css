@@ -1103,6 +1103,14 @@ input { font-family: inherit; color: inherit; }
 }
 .row:last-child { margin-bottom: 0; }
 
+/* Labeled property row: a short caption on the left, the field on the right. */
+.prop-row { align-items: center; }
+.prop-row .prop-label {
+  flex: 0 0 auto; width: 52px;
+  font-size: 11px; color: var(--app-fg-3);
+  user-select: none;
+}
+
 .input-wrap {
   display: flex; align-items: center;
   flex: 1; min-width: 0;

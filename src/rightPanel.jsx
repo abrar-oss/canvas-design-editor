@@ -3313,6 +3313,71 @@ const update = (patch) => {
     history.commit();
   };
 
+  // Space between selected items — Figma's spacing field. Sets the EXACT gap
+  // between adjacent items along their dominant arrangement axis, anchoring the
+  // first item and repacking the rest. Works for 2+ items (Distribute needs 3+
+  // to spread evenly; this just sets one gap and applies it between every pair).
+  const spacingInfo = () => {
+    const sel = selected;
+    if (sel.length < 2) return null;
+    const xs = sel.map(s => s.x), ys = sel.map(s => s.y);
+    const x2 = sel.map(s => s.x + s.w), y2 = sel.map(s => s.y + s.h);
+    const w = Math.max(...x2) - Math.min(...xs);
+    const h = Math.max(...y2) - Math.min(...ys);
+    const axis = w >= h ? "h" : "v"; // wider spread → horizontal row
+    const ordered = sel.slice().sort((a, b) => axis === "h" ? a.x - b.x : a.y - b.y);
+    const gaps = [];
+    for (let i = 1; i < ordered.length; i++) {
+      const prev = ordered[i - 1], cur = ordered[i];
+      gaps.push(Math.round(axis === "h" ? cur.x - (prev.x + prev.w) : cur.y - (prev.y + prev.h)));
+    }
+    const uniform = gaps.every(g => g === gaps[0]);
+    return {
+      axis,
+      gap: uniform ? gaps[0] : Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length),
+      mixed: !uniform,
+    };
+  };
+
+  const setSpacing = (value) => {
+    const info = spacingInfo();
+    if (!info) return;
+    const axis = info.axis;
+    const ordered = selected.slice().sort((a, b) => axis === "h" ? a.x - b.x : a.y - b.y);
+    // First item stays put; each subsequent item is placed `value` px after the
+    // previous item's trailing edge. Build a per-node delta.
+    const deltas = {};
+    let cursor = axis === "h" ? (ordered[0].x + ordered[0].w) : (ordered[0].y + ordered[0].h);
+    for (let i = 1; i < ordered.length; i++) {
+      const s = ordered[i];
+      const start = cursor + value;
+      if (axis === "h") deltas[s.id] = { dx: Math.round(start - s.x), dy: 0 };
+      else              deltas[s.id] = { dx: 0, dy: Math.round(start - s.y) };
+      cursor = start + (axis === "h" ? s.w : s.h);
+    }
+    history.snapshot();
+    setDoc(d => ({
+      ...d,
+      pages: d.pages.map(p => {
+        if (p.id !== activePageId) return p;
+        // Moving a frame must move its descendants too (child coords are world).
+        const byId = { ...deltas };
+        let added = true;
+        while (added) {
+          added = false;
+          p.children.forEach(c => {
+            if (c.parentId && byId[c.parentId] && !byId[c.id]) { byId[c.id] = byId[c.parentId]; added = true; }
+          });
+        }
+        return { ...p, children: p.children.map(c => {
+          const m = byId[c.id]; if (!m) return c;
+          return { ...c, x: Math.round(c.x + m.dx), y: Math.round(c.y + m.dy) };
+        })};
+      })
+    }));
+    history.commit();
+  };
+
   // Frame tool active + nothing selected → show device/size presets (Figma).
   if (!one && selected.length === 0 && tool === "frame") {
     return (
@@ -3349,9 +3414,10 @@ const update = (patch) => {
             h: Math.max(...y2) - Math.min(...ys),
           };
           const canDistribute = selected.length >= 3;
+          const sp = spacingInfo();
           return (
           <>
-            <Section title={`${selected.length} selected`}>
+            <Section title="Position">
               {/* Alignment — 6 buttons in two pills. Aligns every selected
                   item to the selection's bounding box (or the parent frame
                   when items share a parent — handled by alignTo). */}
@@ -3389,6 +3455,20 @@ const update = (patch) => {
                   </button>
                 </div>
               </div>
+              {/* Space between — set the exact gap between adjacent items.
+                  Its own labeled row (not floating beside distribute). Works for
+                  2+ items; the glyph is draggable to scrub. Axis is inferred. */}
+              {sp && (
+                <div className="row prop-row" style={{ marginTop: 6 }}>
+                  <span className="prop-label">Spacing</span>
+                  <NumInput
+                    prefix={sp.axis === "h" ? "⇿" : <GapVGlyph/>}
+                    value={sp.gap}
+                    onChange={setSpacing}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              )}
               {/* Selection bounding box readout */}
               <div className="row" style={{ marginTop: 6 }}>
                 <NumInput prefix="X" value={Math.round(bbox.x)}
