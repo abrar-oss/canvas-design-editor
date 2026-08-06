@@ -611,7 +611,7 @@ function Canvas() {
       // Tool shortcuts (single-letter, no modifiers). Z is handled above as a
       // hold-to-zoom modifier, so it's intentionally not in this map.
       const keyMap = { v: "select", k: "scale", h: "hand", f: "frame", r: "rect", o: "ellipse", l: "line",
-                       p: "pen", t: "text", c: "comment", i: "image" };
+                       p: "pen", t: "text", c: "comment", s: "image" };
       if (keyMap[e.key?.toLowerCase()] && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
         setTool(keyMap[e.key.toLowerCase()]);
       }

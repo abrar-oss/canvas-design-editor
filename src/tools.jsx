@@ -31,7 +31,7 @@ const TOOLS = [
   { id: "text",  icon: Icon.Text,  label: "Text", shortcut: "T" },
   // Swatch group — Swatch (image) / Rating (star) share one slot with a flyout.
   { id: "swatch", label: "Swatch", default: "image", options: [
-    { id: "image",  icon: Icon.Image,  label: "Swatch", shortcut: "I" },
+    { id: "image",  icon: Icon.Image,  label: "Swatch", shortcut: "S" },
     { id: "rating", icon: Icon.Rating, label: "Rating", shortcut: "" },
   ]},
   { id: "comment", icon: Icon.Comment, label: "Comment", shortcut: "C" },
