@@ -3415,6 +3415,19 @@ const update = (patch) => {
           };
           const canDistribute = selected.length >= 3;
           const sp = spacingInfo();
+          // Shared corner radius across the selection (blank/0 when mixed).
+          const radii = selected.map(s => s.radius || 0);
+          const commonRadius = radii.every(r => r === radii[0]) ? radii[0] : 0;
+          const setAllRadius = (v) => {
+            history.snapshot();
+            setDoc(d => ({
+              ...d,
+              pages: d.pages.map(p => p.id === activePageId
+                ? { ...p, children: p.children.map(c => selection.includes(c.id) ? { ...c, radius: Math.max(0, Math.round(v)) } : c) }
+                : p),
+            }));
+            history.commit();
+          };
           return (
           <>
             <Section title="Position">
@@ -3455,30 +3468,32 @@ const update = (patch) => {
                   </button>
                 </div>
               </div>
-              {/* Space between — set the exact gap between adjacent items.
-                  Its own labeled row (not floating beside distribute). Works for
-                  2+ items; the glyph is draggable to scrub. Axis is inferred. */}
-              {sp && (
-                <div className="row prop-row" style={{ marginTop: 6 }}>
-                  <span className="prop-label">Spacing</span>
-                  <NumInput
-                    prefix={sp.axis === "h" ? "⇿" : <GapVGlyph/>}
-                    value={sp.gap}
-                    onChange={setSpacing}
-                    style={{ flex: 1 }}
-                  />
-                </div>
-              )}
-              {/* Selection bounding box readout */}
+              {/* Selection bounding box origin — moves all selected together. */}
               <div className="row" style={{ marginTop: 6 }}>
                 <NumInput prefix="X" value={Math.round(bbox.x)}
                           onChange={v => { const dx = v - bbox.x; selected.forEach(s => translateNode(s.id, dx, 0)); }}/>
                 <NumInput prefix="Y" value={Math.round(bbox.y)}
                           onChange={v => { const dy = v - bbox.y; selected.forEach(s => translateNode(s.id, 0, dy)); }}/>
               </div>
+            </Section>
+
+            <Section title="Layout">
+              {/* Selection bounding box size (read-only). */}
               <div className="row">
-                <NumInput prefix="W" value={Math.round(bbox.w)} onChange={() => {}}/>
-                <NumInput prefix="H" value={Math.round(bbox.h)} onChange={() => {}}/>
+                <NumInput prefix="W" value={Math.round(bbox.w)} onChange={() => {}} disabled/>
+                <NumInput prefix="H" value={Math.round(bbox.h)} onChange={() => {}} disabled/>
+              </div>
+              {/* Corner radius (applies to all selected) + Space between on the
+                  right. Spacing sets the exact gap between adjacent items along
+                  their dominant axis; the glyph is draggable to scrub. Shown
+                  only when the gap is meaningful (2+ items). */}
+              <div className="row">
+                <NumInput prefix={<Icon.Corners size={11}/>} value={commonRadius} min={0} onChange={setAllRadius}/>
+                {sp ? (
+                  <NumInput prefix={sp.axis === "h" ? "↔" : <GapVGlyph/>} value={sp.gap} onChange={setSpacing}/>
+                ) : (
+                  <div className="input-wrap" style={{ visibility: "hidden", pointerEvents: "none" }} aria-hidden="true"/>
+                )}
               </div>
               <div style={{ fontSize: 11, color: "var(--app-fg-3)", marginTop: 8, lineHeight: 1.4 }}>
                 Arrow keys nudge all · Delete removes all · Drag the selection to move together.
