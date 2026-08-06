@@ -856,7 +856,7 @@ input { font-family: inherit; color: inherit; }
   bottom: 16px; left: 50%;
   transform: translateX(-50%);
   display: flex; align-items: center;
-  gap: 1px;
+  gap: 4px;
   background: var(--toolbar-bg);
   border: 1px solid var(--app-border);
   border-radius: var(--ui-r-floating);
@@ -892,26 +892,23 @@ input { font-family: inherit; color: inherit; }
   font-family: var(--font-mono);
 }
 .tool-divider { width: 1px; height: 20px; background: var(--app-border); margin: 0 4px; align-self: center; }
-/* Shape-group button holds a shape icon PLUS a dropdown chevron side by side,
-   so it hugs its contents instead of the fixed square size. */
-.tool-btn.has-caret {
-  width: auto;
-  gap: 1px;
-  padding: 0 4px 0 6px;
+/* Each tool is a slot = an icon button + a visually SEPARATE chevron. Only the
+   icon button highlights when active; the chevron sits apart in the bar. A thin
+   divider before the chevron makes the separation explicit. */
+.tool-slot { position: relative; display: flex; align-items: center; }
+.tool-chevron {
+  width: 20px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--app-fg); opacity: 0.55;
+  cursor: pointer;
+  border-radius: var(--ui-r-ctrl);
+  transition: opacity var(--dur-fast, 120ms) var(--ease-out, ease),
+              background var(--dur-fast, 120ms) var(--ease-out, ease);
 }
-.tool-caret {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -1px;
-  opacity: 0.5;
-  transition: transform var(--dur-fast, 120ms) var(--ease-out, ease),
-              opacity var(--dur-fast, 120ms) var(--ease-out, ease);
-}
-.tool-caret svg { display: block; }
-.tool-btn:hover .tool-caret { opacity: 0.75; }
-.tool-btn.active .tool-caret { opacity: 0.85; }
-.tool-caret.open { transform: rotate(180deg); }
+.tool-chevron svg { display: block; width: 18px; height: 18px; }
+.tool-chevron:hover { opacity: 0.95; background: var(--app-hover); }
+.tool-chevron.open { opacity: 0.95; }
 
 .tool-menu {
   position: absolute;
@@ -926,6 +923,12 @@ input { font-family: inherit; color: inherit; }
   box-shadow: var(--toolbar-shadow);
   min-width: 184px;
   z-index: 30;
+  /* Subtle dissolve — pure opacity fade, no movement. */
+  animation: tool-menu-dissolve 130ms var(--ease-out, ease);
+}
+@keyframes tool-menu-dissolve {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .tool-menu-item {
   display: flex; align-items: center; gap: 10px;

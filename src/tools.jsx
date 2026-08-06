@@ -5,14 +5,14 @@ import { useApp } from "./utils.jsx";
 const { useState, useEffect, useRef } = React;
 
 const TOOLS = [
-  // Move group — Move / Hand / Scale share one dock slot with a flyout (Figma).
-  { id: "move", group: true, label: "Move", default: "select", options: [
+  // Move group — Move / Hand / Scale share one slot with a flyout (Figma).
+  { id: "move", label: "Move", default: "select", options: [
     { id: "select", icon: Icon.Cursor, label: "Move", shortcut: "V" },
     { id: "hand",   icon: Icon.Hand,   label: "Hand tool", shortcut: "H" },
     { id: "scale",  icon: Icon.Scale,  label: "Scale", shortcut: "K" },
   ]},
   { id: "frame",  icon: Icon.Frame,  label: "Frame", shortcut: "F" },
-  { id: "shape",  group: true, label: "Shape", default: "rect", options: [
+  { id: "shape",  label: "Shape", default: "rect", options: [
     { id: "rect", icon: Icon.Rect, label: "Rectangle", shortcut: "R" },
     { id: "ellipse", icon: Icon.Ellipse, label: "Ellipse", shortcut: "O" },
     { id: "line", icon: Icon.Line, label: "Line", shortcut: "L" },
@@ -25,21 +25,22 @@ const TOOLS = [
   { id: "comment", icon: Icon.Comment, label: "Comment", shortcut: "C" },
 ];
 
-// A grouped tool: a primary button (showing the last-used member) with a
-// chevron that opens a flyout of the member tools. Used for both the Move
-// (Move/Hand/Scale) and Shape (Rectangle/Ellipse/…) groups.
-function ToolGroup({ group }) {
+// One dock slot: an icon button (the only part that highlights when active)
+// PLUS a visually separate chevron to its right. Tools with `options` open a
+// flyout from the chevron; single tools have a decorative chevron that just
+// re-selects the tool.
+function ToolSlot({ tool: t }) {
   const { tool, setTool } = useApp();
-  const optionIds = group.options.map(o => o.id);
+  const hasOptions = Array.isArray(t.options) && t.options.length > 0;
+  const optionIds = hasOptions ? t.options.map(o => o.id) : [t.id];
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(group.default || optionIds[0]);
+  const [active, setActive] = useState(hasOptions ? (t.default || optionIds[0]) : t.id);
   const ref = useRef(null);
 
-  // Keep the primary button in sync when a member is activated by shortcut
-  // (V/H/K, R/O/L) or anywhere else — not just via the flyout.
+  // Keep the primary icon in sync when a member is activated by shortcut.
   useEffect(() => { if (optionIds.includes(tool)) setActive(tool); }, [tool]);
 
-  // Close the flyout on outside click or Escape.
+  // Close the flyout on outside click / Escape.
   useEffect(() => {
     if (!open) return;
     const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -52,22 +53,38 @@ function ToolGroup({ group }) {
     };
   }, [open]);
 
-  const groupActive = optionIds.includes(tool);
-  const ActiveIcon = (group.options.find(o => o.id === active) || group.options[0]).icon;
+  const slotActive = optionIds.includes(tool);
+  const ActiveIcon = hasOptions ? (t.options.find(o => o.id === active) || t.options[0]).icon : t.icon;
+  const primaryTool = hasOptions ? active : t.id;
+  const titleBase = t.shortcut ? `${t.label} (${t.shortcut})` : t.label;
 
+  // Plain tool (no sub-options) — a single icon button, no chevron. Chevrons
+  // are reserved for slots that actually open a flyout.
+  if (!hasOptions) {
+    const Ic = t.icon;
+    return (
+      <button className={`tool-btn ${tool === t.id ? "active" : ""}`}
+              onClick={() => setTool(t.id)} title={titleBase}>
+        <Ic size={20} />
+      </button>
+    );
+  }
+
+  // Grouped tool — icon button + a visually separate chevron that opens a flyout.
   return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button className={`tool-btn has-caret ${groupActive ? "active" : ""}`}
-              onClick={() => setTool(active)} title={group.label}>
+    <div ref={ref} className="tool-slot">
+      <button className={`tool-btn ${slotActive ? "active" : ""}`}
+              onClick={() => setTool(primaryTool)} title={titleBase}>
         <ActiveIcon size={20} />
-        <span className={`tool-caret ${open ? "open" : ""}`}
-              onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}>
-          <Icon.Chevron size={14} />
-        </span>
+      </button>
+      <button className={`tool-chevron ${open ? "open" : ""}`}
+              onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+              title={`${t.label} options`} tabIndex={-1}>
+        <Icon.Chevron size={18} />
       </button>
       {open && (
         <div className="tool-menu">
-          {group.options.map(opt => {
+          {t.options.map(opt => {
             const I = opt.icon;
             return (
               <div key={opt.id}
@@ -86,21 +103,9 @@ function ToolGroup({ group }) {
 }
 
 function ToolDock() {
-  const { tool, setTool } = useApp();
   return (
     <div className="tool-dock">
-      {TOOLS.map(t => {
-        if (t.group) return <ToolGroup key={t.id} group={t} />;
-        const Ic = t.icon;
-        return (
-          <button key={t.id}
-                  className={`tool-btn ${tool === t.id ? "active" : ""}`}
-                  onClick={() => setTool(t.id)}
-                  title={`${t.label} (${t.shortcut})`}>
-            <Ic size={20} />
-          </button>
-        );
-      })}
+      {TOOLS.map(t => <ToolSlot key={t.id} tool={t} />)}
     </div>
   );
 }
