@@ -4,6 +4,14 @@ import { useApp } from "./utils.jsx";
 /* global React, Icon, useApp */
 const { useState, useEffect, useRef } = React;
 
+// Figma-style hover tooltip shown above a tool button: the tool name plus a
+// dim shortcut key. Rendered inside the button; CSS fades it in on hover.
+const Tip = ({ label, shortcut }) => (
+  <span className="tool-tip" role="tooltip">
+    {label}{shortcut ? <kbd>{shortcut}</kbd> : null}
+  </span>
+);
+
 const TOOLS = [
   // Move group — Move / Hand / Scale share one slot with a flyout (Figma).
   { id: "move", label: "Move", default: "select", options: [
@@ -54,9 +62,9 @@ function ToolSlot({ tool: t }) {
   }, [open]);
 
   const slotActive = optionIds.includes(tool);
-  const ActiveIcon = hasOptions ? (t.options.find(o => o.id === active) || t.options[0]).icon : t.icon;
+  const activeOpt = hasOptions ? (t.options.find(o => o.id === active) || t.options[0]) : null;
+  const ActiveIcon = hasOptions ? activeOpt.icon : t.icon;
   const primaryTool = hasOptions ? active : t.id;
-  const titleBase = t.shortcut ? `${t.label} (${t.shortcut})` : t.label;
 
   // Plain tool (no sub-options) — a single icon button, no chevron. Chevrons
   // are reserved for slots that actually open a flyout.
@@ -64,8 +72,9 @@ function ToolSlot({ tool: t }) {
     const Ic = t.icon;
     return (
       <button className={`tool-btn ${tool === t.id ? "active" : ""}`}
-              onClick={() => setTool(t.id)} title={titleBase}>
+              onClick={() => setTool(t.id)} aria-label={t.label}>
         <Ic size={20} />
+        <Tip label={t.label} shortcut={t.shortcut} />
       </button>
     );
   }
@@ -74,8 +83,9 @@ function ToolSlot({ tool: t }) {
   return (
     <div ref={ref} className="tool-slot">
       <button className={`tool-btn ${slotActive ? "active" : ""}`}
-              onClick={() => setTool(primaryTool)} title={titleBase}>
+              onClick={() => setTool(primaryTool)} aria-label={activeOpt.label}>
         <ActiveIcon size={20} />
+        <Tip label={activeOpt.label} shortcut={activeOpt.shortcut} />
       </button>
       <button className={`tool-chevron ${open ? "open" : ""}`}
               onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
