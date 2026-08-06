@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "./icons.jsx";
 import {
   useApp, SHAPE_DEFAULTS, uid, clamp, round, hexToRgba, lineHeightCss, penBounds, scaleNodePatch,
+  firstVisibleFill,
 } from "./utils.jsx";
 import { renderShape, Rulers } from "./shapes.jsx";
 /* global React, Icon, useApp, SHAPE_DEFAULTS, uid, clamp, round, renderShape, Rulers, hexToRgba */
@@ -2188,7 +2189,7 @@ function Canvas() {
       return (
         <div key={n.id}
              data-node-id={n.id}
-             className={isFrame ? "frame" : "shape"}
+             className={isFrame ? ("frame" + (firstVisibleFill(n) ? "" : " no-fill")) : "shape"}
              style={{
                position: "absolute",
                left: relX, top: relY,
