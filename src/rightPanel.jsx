@@ -1505,7 +1505,7 @@ function ColorPopover({ value, onChange, onClose, anchor, allowGradient }) {
 
 // ----- Sections -----
 
-function Section({ title, children, add, onAdd, defaultOpen = true }) {
+function Section({ title, children, add, onAdd, active, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="insp-section">
@@ -1514,7 +1514,11 @@ function Section({ title, children, add, onAdd, defaultOpen = true }) {
           {title}
         </span>
         {add && <div className="actions">
-          <button className="icon-btn" onClick={onAdd}><Icon.Plus size={16}/></button>
+          {/* When the feature is already on, the action removes it — show a
+              minus instead of a plus so it's clear it toggles off. */}
+          <button className="icon-btn" onClick={onAdd} title={active ? "Remove" : "Add"}>
+            {active ? <Icon.Minus size={16}/> : <Icon.Plus size={16}/>}
+          </button>
         </div>}
       </div>
       {open && children}
@@ -3871,7 +3875,7 @@ const update = (patch) => {
       })()}
 
       {n.type === "frame" && (
-        <Section title="Auto layout" add onAdd={() => {
+        <Section title="Auto layout" add active={n.autoLayout} onAdd={() => {
           // Toggling auto-layout OFF must commit the laid-out positions back
           // into each child's world coords — otherwise the children "snap
           // back" to whatever stale x/y was stored, which is disorienting.
