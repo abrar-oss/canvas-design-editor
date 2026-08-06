@@ -1045,21 +1045,23 @@ function Canvas() {
       return;
     }
 
-    // Drawing tools — start creation drag
-    if (["frame", "rect", "ellipse", "line", "polygon", "star", "text", "image", "comment"].includes(tool)) {
-      const defaults = SHAPE_DEFAULTS[tool] || {};
+    // Drawing tools — start creation drag. The Rating tool draws a star node
+    // (its own dock entry, mapped to the existing star shape/renderer).
+    if (["frame", "rect", "ellipse", "line", "polygon", "star", "rating", "text", "image", "comment"].includes(tool)) {
+      const shapeType = tool === "rating" ? "star" : tool;
+      const defaults = SHAPE_DEFAULTS[shapeType] || {};
       // Detect innermost frame at point (for nested-frame support)
       const frameAt = deepestFrameAt(w.x, w.y);
       const parentFrame = frameAt;
       const newNode = {
         id: uid(),
-        type: tool,
+        type: shapeType,
         opacity: 1,
         ...defaults,
         // Auto-numbering is resolved in addNode against live page state.
         // `_autoName` carries the base label; addNode strips it and assigns
         // a unique "Base", "Base 1", "Base 2", … name.
-        _autoName: defaults.name || tool,
+        _autoName: tool === "rating" ? "Rating" : (defaults.name || tool),
         x: w.x, y: w.y,
         w: tool === "comment" ? 28 : 1, h: tool === "comment" ? 28 : 1,
         parentId: parentFrame?.id || null,

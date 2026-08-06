@@ -728,6 +728,7 @@ input { font-family: inherit; color: inherit; }
 .canvas-scroller.tool-line,
 .canvas-scroller.tool-polygon,
 .canvas-scroller.tool-image,
+.canvas-scroller.tool-rating,
 .canvas-scroller.tool-comment { cursor: crosshair; }
 /* Pen tool gets a nib cursor (white halo so it reads on any background),
    hotspot at the nib tip. One SVG layers a thick white stroke under a thin
