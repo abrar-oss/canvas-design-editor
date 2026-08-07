@@ -514,20 +514,33 @@ function Canvas() {
         const idMap = {};
         subtree.forEach(c => { idMap[c.id] = uid(); });
         const origIds = new Set(subtree.map(c => c.id));
+        // Placement delta per TOP-LEVEL selected node: a frame lands to the
+        // right of the original (+width+50px gap), other shapes get a small
+        // diagonal nudge. Every descendant moves by its top-level ancestor's
+        // SAME delta so children keep their position inside the moved frame
+        // (otherwise they'd stay at the original spot and get clipped away).
+        const topDelta = {};
+        subtree.forEach(c => {
+          const isTop = !c.parentId || !origIds.has(c.parentId);
+          if (!isTop) return;
+          const gb = G(c);
+          topDelta[c.id] = c.type === "frame"
+            ? { dx: gb.w + 50, dy: 0 }
+            : { dx: 20, dy: 20 };
+        });
+        const topAncestorId = (c) => {
+          let n = c;
+          while (n.parentId && origIds.has(n.parentId)) n = subtree.find(x => x.id === n.parentId) || n;
+          return n.id;
+        };
         const clones = subtree.map(c => {
           const isTop = !c.parentId || !origIds.has(c.parentId);
-          const gb = G(c);
-          // Placement of the clone:
-          //  • nested descendants keep their relative position (parent moves them);
-          //  • a top-level FRAME lands to the RIGHT of the original with a 50px gap;
-          //  • any other top-level shape gets a small diagonal nudge.
-          const nx = !isTop ? c.x : (c.type === "frame" ? c.x + gb.w + 50 : c.x + 20);
-          const ny = !isTop ? c.y : (c.type === "frame" ? c.y : c.y + 20);
+          const d = topDelta[topAncestorId(c)] || { dx: 0, dy: 0 };
           return {
             ...c,
             id: idMap[c.id],
-            x: nx,
-            y: ny,
+            x: Math.round(c.x + d.dx),
+            y: Math.round(c.y + d.dy),
             parentId: !isTop ? idMap[c.parentId] : (c.parentId || null),
             // Top-level clones renumber (Frame → Frame 3); nested keep their names.
             ...(isTop ? { _autoName: autoNameBase(c.name, c.type) } : {}),
