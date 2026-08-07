@@ -758,19 +758,9 @@ input { font-family: inherit; color: inherit; }
   /* No hardcoded background — the frame's actual fill (or transparency) is
      painted by the inner shape layer, so an empty fill really shows through. */
   background: transparent;
-  /* Shadow is inverse-scaled by the canvas zoom so the frame's bounding edge
-     stays ~1px regardless of zoom level. --zoom is set on .canvas-world. */
-  box-shadow: 0 calc(1px / var(--zoom, 1)) calc(3px / var(--zoom, 1)) rgba(0,0,0,0.12);
+  /* No default shadow — a frame shows only its fill. A drop shadow can be
+     added per-frame from the Effects section (it renders on the fill layer). */
 }
-/* Nested frames don't get their own shadow — looks cleaner */
-.frame .frame { box-shadow: none; }
-[data-theme="dark"] .frame { box-shadow: 0 0 0 calc(1px / var(--zoom, 1)) rgba(0,0,0,0.5); }
-[data-theme="dark"] .frame .frame { box-shadow: none; }
-/* A frame with no fill has nothing for a drop shadow (or outline) to sit on —
-   it should be fully transparent, showing only its content. No shadow, no
-   outline. The frame label + selection chrome keep it discoverable. */
-.frame.no-fill { box-shadow: none; }
-[data-theme="dark"] .frame.no-fill { box-shadow: none; }
 .frame-label {
   position: absolute;
   top: -20px; left: 0;
