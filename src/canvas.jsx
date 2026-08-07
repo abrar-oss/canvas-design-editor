@@ -2020,9 +2020,16 @@ function Canvas() {
     const selIdx = selId ? path.findIndex(n => n.id === selId) : -1;
     const toSelect = path[selIdx + 1] || deepNode;
 
+    // Figma-style: a double-click drills one level and SELECTS. Enter text
+    // editing only when the double-click lands on a text that was ALREADY
+    // selected — so drilling in (e.g. frame → text) selects the text first,
+    // and a further double-click on it enters editing. Prevents accidental
+    // edits when you just wanted to select/move the text layer.
+    const enterEdit = toSelect.type === "text" && selId === toSelect.id;
+
     setSelection([toSelect.id]);
     setSelCtx(toSelect.parentId || null);
-    if (toSelect.type === "text") setEditingText(toSelect.id);
+    if (enterEdit) setEditingText(toSelect.id);
   };
   // Figma-style: single-click selects the *topmost frame ancestor*. Double-click
   // (or already-inside a frame) drills into children.
