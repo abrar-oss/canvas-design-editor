@@ -833,7 +833,7 @@ function LayerRow({
                onKeyDown={e => { if (e.key === "Enter") { onRename(value); setEditing(false); } if (e.key === "Escape") setEditing(false); }}
                style={{ flex: 1, border: "none", outline: "1px solid var(--accent)", borderRadius: 3, background: "var(--app-panel)", fontSize: 12, color: "var(--app-fg)", padding: "0 3px", height: 20 }}/>
       ) : (
-        <span className="layer-name" style={isFrame ? { fontWeight: 600 } : null}>{node.name}</span>
+        <span className="layer-name">{node.name}</span>
       )}
       <div className="layer-actions">
         <button className="icon-btn" onClick={(e) => { e.stopPropagation(); onToggleVisible(); }}>
