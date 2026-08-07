@@ -917,6 +917,10 @@ input { font-family: inherit; color: inherit; }
 .tool-chevron svg { display: block; width: 18px; height: 18px; }
 .tool-chevron:hover { opacity: 0.95; background: var(--app-hover); }
 .tool-chevron.open { opacity: 0.95; }
+/* The chevron isn't keyboard-navigable (tabindex -1), so it should never show
+   a focus ring — otherwise clicking it then pressing Esc leaves it "selected". */
+.tool-chevron:focus,
+.tool-chevron:focus-visible { outline: none; box-shadow: none; }
 
 /* Hover tooltip above a tool button — name + dim shortcut key. Inverted
    (fg-on-bg) so it reads in both themes; fades in after a short delay. */
