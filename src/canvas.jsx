@@ -516,13 +516,19 @@ function Canvas() {
         const origIds = new Set(subtree.map(c => c.id));
         const clones = subtree.map(c => {
           const isTop = !c.parentId || !origIds.has(c.parentId);
+          const gb = G(c);
+          // Placement of the clone:
+          //  • nested descendants keep their relative position (parent moves them);
+          //  • a top-level FRAME lands to the RIGHT of the original with a 50px gap;
+          //  • any other top-level shape gets a small diagonal nudge.
+          const nx = !isTop ? c.x : (c.type === "frame" ? c.x + gb.w + 50 : c.x + 20);
+          const ny = !isTop ? c.y : (c.type === "frame" ? c.y : c.y + 20);
           return {
             ...c,
             id: idMap[c.id],
-            // Only offset top-level clones; descendants keep their relative position (parent moves them).
-            x: c.parentId && origIds.has(c.parentId) ? c.x : c.x + 20,
-            y: c.parentId && origIds.has(c.parentId) ? c.y : c.y + 20,
-            parentId: c.parentId && origIds.has(c.parentId) ? idMap[c.parentId] : (c.parentId || null),
+            x: nx,
+            y: ny,
+            parentId: !isTop ? idMap[c.parentId] : (c.parentId || null),
             // Top-level clones renumber (Frame → Frame 3); nested keep their names.
             ...(isTop ? { _autoName: autoNameBase(c.name, c.type) } : {}),
           };
