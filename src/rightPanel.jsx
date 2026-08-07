@@ -2873,17 +2873,6 @@ function SelectionColorsSection({ selected, children, activePageId, setDoc, hist
 
 // Figma-style device/frame size presets, grouped by category.
 const FRAME_PRESETS = [
-  { group: "Phone", items: [
-    ["iPhone 16 Pro", 402, 874], ["iPhone 16", 393, 852],
-    ["iPhone SE", 320, 568], ["Android Compact", 412, 917],
-  ] },
-  { group: "Tablet", items: [
-    ["iPad mini", 744, 1133], ["iPad Pro 11\"", 834, 1194], ["Surface Pro 8", 1440, 960],
-  ] },
-  { group: "Desktop", items: [
-    ["Desktop", 1440, 1024], ["MacBook", 1280, 832],
-    ["MacBook Pro 14\"", 1512, 982], ["Full HD", 1920, 1080],
-  ] },
   { group: "Social", items: [
     ["Instagram Post", 1080, 1080], ["Instagram Story", 1080, 1920], ["Slide 16:9", 1920, 1080],
   ] },
