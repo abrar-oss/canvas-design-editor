@@ -41,11 +41,18 @@ function FrameLabel({ node, isSelected, screenX, screenY, screenW, onSelect, onR
     if (value.trim()) onRename(value.trim());
     setEditing(false);
   };
+  // When zoomed way out, a frame can be only a few px wide on screen. A
+  // fixed-width label then overflows its frame and overlaps neighbours. Hide
+  // the label once the frame is too small to show anything meaningful (unless
+  // it's selected or being renamed), and otherwise clamp the label to the
+  // frame's on-screen width so it truncates with an ellipsis instead of
+  // spilling over.
+  if (!editing && !isSelected && screenW < 24) return null;
   const commonStyle = {
     position: "absolute",
     left: screenX,
     top: screenY - 18,
-    maxWidth: Math.max(60, screenW),
+    maxWidth: Math.max(24, screenW),
     pointerEvents: "auto",
   };
   if (editing) {
