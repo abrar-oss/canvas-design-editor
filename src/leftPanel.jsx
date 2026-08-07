@@ -462,7 +462,7 @@ function LeftPanel() {
         <div className="lp-head-top">
           <div className="lp-logo-wrap" ref={menuRef}>
             <button className={`lp-logo ${menuOpen ? "open" : ""}`} aria-label="Main menu"
-                    title="Main menu" onClick={() => setMenuOpen(v => !v)}>
+                    title="goodAds.ai" onClick={() => setMenuOpen(v => !v)}>
               <svg width="24" height="15" viewBox="0 0 128 82" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M87.46 0V0.04H70.41V81.21H87.46C109.61 81.21 127.56 63.05 127.56 40.6C127.56 18.15 109.62 0 87.46 0ZM0 60.13C0 71.78 9.44 81.22 21.09 81.22V59.88H0V60.14V60.13ZM32.35 3.71H0V29.35H17.3L40.43 81.22L40.39 81.27H70.37L35.84 3.71H32.35Z" fill="currentColor"/>
               </svg>
@@ -528,7 +528,7 @@ function LeftPanel() {
               </div>
             )}
           </div>
-          <button className="icon-btn lp-collapse" title="Collapse panel"><Icon.PanelLeft size={16} /></button>
+          <button className="icon-btn lp-collapse" title="Minimize UI"><Icon.PanelLeft size={16} /></button>
         </div>
         <div className="lp-file">
           {editingFileName ? (
