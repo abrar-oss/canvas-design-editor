@@ -872,7 +872,7 @@ input { font-family: inherit; color: inherit; }
   display: flex; align-items: center; justify-content: center;
   border: none; background: transparent;
   color: var(--app-fg);
-  border-radius: var(--ui-r-ctrl);
+  border-radius: 13px;
   cursor: pointer;
   position: relative;
   /* Only the text/icon color animates. The background is intentionally NOT
