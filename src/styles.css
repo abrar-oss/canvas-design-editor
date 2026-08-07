@@ -560,9 +560,10 @@ input { font-family: inherit; color: inherit; }
 .layer.selected { background: var(--accent-soft); color: var(--accent); }
 [data-theme="dark"] .layer.selected { color: var(--accent); }
 
-/* Frame rows get a faint tint so the hierarchy reads at a glance. */
-.layer.is-frame { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.layer.is-frame:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+/* Frames aren't tinted by default — they read as quiet as any other row and
+   are distinguished by their icon (Figma-style). They highlight only on hover
+   (neutral) or when selected. */
+.layer.is-frame:hover { background: var(--app-hover); }
 .layer.is-frame.selected { background: var(--accent-soft); }
 
 /* Descendants of a selected frame get a gentler highlight. */
