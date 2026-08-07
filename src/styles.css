@@ -608,7 +608,11 @@ input { font-family: inherit; color: inherit; }
   flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 11px;
+  /* The name reads a touch darker than the icon/chevron (which stay at the
+     lighter --app-fg-2) so the label is clear while the row stays quiet. */
+  color: color-mix(in srgb, var(--app-fg) 60%, var(--app-fg-2));
 }
+.layer.selected .layer-name { color: var(--accent); }
 .layer .layer-actions { display: flex; gap: 0; opacity: 0; flex-shrink: 0; transition: opacity var(--dur-fast, 120ms); }
 .layer:hover .layer-actions, .layer.selected .layer-actions { opacity: 1; }
 .layer-actions .icon-btn { width: 22px; height: 22px; border-radius: var(--ui-r-chip); }
