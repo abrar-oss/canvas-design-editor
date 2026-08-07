@@ -943,6 +943,41 @@ input { font-family: inherit; color: inherit; }
   transition-delay: 350ms;
 }
 
+/* Reusable styled tooltip that appears BELOW its trigger — same dark pill as
+   the toolbar's, for header/top-of-panel buttons. Add a `.ui-tip` child to any
+   `.has-tip` (position:relative) element. */
+.has-tip { position: relative; }
+.ui-tip {
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%) translateY(-3px);
+  margin-top: 8px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 8px;
+  background: var(--app-fg); color: var(--app-bg);
+  border-radius: 6px;
+  font-size: 11px; font-weight: 500; line-height: 1;
+  white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  box-shadow: var(--toolbar-shadow);
+  z-index: 60;
+  transition: opacity 90ms var(--ease-out, ease), transform 90ms var(--ease-out, ease);
+}
+.ui-tip kbd { font: inherit; opacity: 0.55; text-transform: uppercase; }
+.has-tip:hover .ui-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 350ms;
+}
+/* Edge-anchored variants so tooltips near a panel edge don't get clipped by
+   the panel's overflow. `left` extends rightward, `right` extends leftward. */
+.ui-tip.left  { left: 0;    right: auto; transform: translateY(-3px); }
+.ui-tip.right { left: auto; right: 0;    transform: translateY(-3px); }
+.has-tip:hover .ui-tip.left,
+.has-tip:hover .ui-tip.right { transform: translateY(0); }
+/* Don't show the logo tooltip while its menu is open. */
+.lp-logo.open .ui-tip { display: none; }
+
 .tool-menu {
   position: absolute;
   bottom: 100%;
