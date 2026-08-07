@@ -1094,7 +1094,7 @@ input { font-family: inherit; color: inherit; }
   background: var(--accent);
   color: #fff;
   font-size: 13px; font-weight: 600;
-  border: none; border-radius: 999px;
+  border: none; border-radius: 12px;
   cursor: pointer;
   transition: filter var(--dur-fast, 120ms) var(--ease-out, ease);
 }
