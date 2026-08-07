@@ -862,7 +862,7 @@ input { font-family: inherit; color: inherit; }
   gap: 4px;
   background: var(--toolbar-bg);
   border: 1px solid var(--app-border);
-  border-radius: var(--ui-r-floating);
+  border-radius: 18px;
   padding: 5px;
   box-shadow: var(--toolbar-shadow);
   z-index: 20;
