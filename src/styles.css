@@ -25,8 +25,8 @@
 }
 
 :root {
-  --accent: #1D4ED8;       /* brand accent — blue */
-  --accent-soft: rgba(29, 78, 216, 0.15);
+  --accent: #2B7FFF;       /* brand accent — blue */
+  --accent-soft: rgba(43, 127, 255, 0.15);
   --select: var(--accent);
 
   /* App chrome tokens (light) */
@@ -60,8 +60,8 @@
 }
 
 [data-theme="dark"] {
-  --accent: #3b82f6;
-  --accent-soft: rgba(59, 130, 246, 0.18);
+  --accent: #2B7FFF;
+  --accent-soft: rgba(43, 127, 255, 0.18);
 
   --app-bg: #0a0a0a;
   --app-chrome: #171717;
