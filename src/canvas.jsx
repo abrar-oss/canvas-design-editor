@@ -1080,6 +1080,12 @@ function Canvas() {
       // Detect innermost frame at point (for nested-frame support)
       const frameAt = deepestFrameAt(w.x, w.y);
       const parentFrame = frameAt;
+      // A node drawn inside a frame the layout engine has repositioned (a frame
+      // that's a flow child of an auto-layout container) must store its coords
+      // relative to the parent's STORED origin, not its resolved on-screen
+      // origin — else the engine offsets it and it lands where it wasn't drawn.
+      let cOffX = 0, cOffY = 0;
+      if (parentFrame) { const pg = G(parentFrame); cOffX = pg.x - parentFrame.x; cOffY = pg.y - parentFrame.y; }
       const newNode = {
         id: uid(),
         type: shapeType,
@@ -1089,7 +1095,7 @@ function Canvas() {
         // `_autoName` carries the base label; addNode strips it and assigns
         // a unique "Base", "Base 1", "Base 2", … name.
         _autoName: tool === "rating" ? "Rating" : (defaults.name || tool),
-        x: w.x, y: w.y,
+        x: w.x - cOffX, y: w.y - cOffY,
         w: tool === "comment" ? 28 : 1, h: tool === "comment" ? 28 : 1,
         parentId: parentFrame?.id || null,
       };
@@ -1124,8 +1130,8 @@ function Canvas() {
               addNode({ ...textNode, sizingMode: "auto-h" });
               setSelection([textNode.id]);
             }
-            const x = Math.min(startW.x, cur.x);
-            const y = Math.min(startW.y, cur.y);
+            const x = Math.min(startW.x, cur.x) - cOffX;
+            const y = Math.min(startW.y, cur.y) - cOffY;
             const width = Math.max(20, Math.abs(cur.x - startW.x));
             const height = Math.max(20, Math.abs(cur.y - startW.y));
             updateNode(textNode.id, { x, y, w: width, h: height, sizingMode: "auto-h" });
@@ -1235,6 +1241,17 @@ function Canvas() {
   function startCreate(e, node, startW) {
     let dragged = false;
     let lastDims = { w: 1, h: 1 };
+    // A node placed inside a frame that the layout engine has repositioned
+    // (e.g. a frame that's a flow child of an auto-layout container) must store
+    // its coords relative to the parent's STORED origin, not its resolved
+    // on-screen origin. screenToWorld gives absolute (resolved) world coords,
+    // so subtract the parent's (resolved - stored) delta or the engine offsets
+    // the node and it lands in the wrong place (and can't be clicked there).
+    let offX = 0, offY = 0;
+    if (node.parentId) {
+      const parent = children.find(c => c.id === node.parentId);
+      if (parent) { const pg = G(parent); offX = pg.x - parent.x; offY = pg.y - parent.y; }
+    }
     const move = (ev) => {
       dragged = true;
       const w = screenToWorld(ev.clientX, ev.clientY);
@@ -1261,10 +1278,10 @@ function Canvas() {
           }
         }
         lastDims = { w: Math.round(dx), h: Math.round(dy) };
-        updateNode(node.id, { x: Math.round(startW.x), y: Math.round(startW.y), w: lastDims.w, h: lastDims.h });
+        updateNode(node.id, { x: Math.round(startW.x - offX), y: Math.round(startW.y - offY), w: lastDims.w, h: lastDims.h });
       } else {
         lastDims = { w: Math.max(1, Math.round(width)), h: Math.max(1, Math.round(height)) };
-        updateNode(node.id, { x: Math.round(x), y: Math.round(y), w: lastDims.w, h: lastDims.h });
+        updateNode(node.id, { x: Math.round(x - offX), y: Math.round(y - offY), w: lastDims.w, h: lastDims.h });
       }
     };
     const up = () => {
@@ -1278,7 +1295,7 @@ function Canvas() {
         // Drop a default-length horizontal line centered on the click instead.
         if (!dragged) {
           const defW = SHAPE_DEFAULTS.line?.w || 200;
-          updateNode(node.id, { x: Math.round(startW.x - defW / 2), y: Math.round(startW.y), w: defW, h: 0 });
+          updateNode(node.id, { x: Math.round(startW.x - defW / 2 - offX), y: Math.round(startW.y - offY), w: defW, h: 0 });
         }
       } else if (tiny) {
         // For frames specifically, a click should make a small 100×100 box —
@@ -1287,9 +1304,9 @@ function Canvas() {
         const defW = node.type === "frame" ? 100 : (SHAPE_DEFAULTS[node.type]?.w || 100);
         const defH = node.type === "frame" ? 100 : (SHAPE_DEFAULTS[node.type]?.h || 100);
         // Center the default-sized shape on the click point (frames included).
-        const x = startW.x - defW / 2;
-        const y = startW.y - defH / 2;
-        updateNode(node.id, { w: defW, h: defH, x, y });
+        const x = startW.x - defW / 2 - offX;
+        const y = startW.y - defH / 2 - offY;
+        updateNode(node.id, { w: defW, h: defH, x: Math.round(x), y: Math.round(y) });
       }
       history.commit();
     };
