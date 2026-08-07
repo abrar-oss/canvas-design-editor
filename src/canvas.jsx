@@ -1447,35 +1447,46 @@ function Canvas() {
       setSelection(topLevelCloneIds);
     }
 
-    const others = children.filter(c => !movingIds.includes(c.id));
+    // Alignment-snap setup. Snap the UNION bounding box of the top-level moved
+    // nodes (a frame, or several frames — NOT their descendants) to the edges
+    // (left/center/right, top/middle/bottom) of their siblings. This is what
+    // shows the pink alignment guides and works for frames-with-content and
+    // multi-selection, both of which the old single-node check excluded.
+    const movingSet0 = new Set(movingIds);
+    const topMoving = children.filter(c => movingSet0.has(c.id) && !(c.parentId && movingSet0.has(c.parentId)));
+    const movedParent = topMoving[0]?.parentId || null;
+    const tb = topMoving.map(c => G(c));
+    const startBBox = tb.length ? {
+      x1: Math.min(...tb.map(b => b.x)), y1: Math.min(...tb.map(b => b.y)),
+      x2: Math.max(...tb.map(b => b.x + b.w)), y2: Math.max(...tb.map(b => b.y + b.h)),
+    } : null;
+    const snapOthers = children
+      .filter(c => !movingSet0.has(c.id) && (c.parentId || null) === movedParent)
+      .map(c => { const b = G(c); return { x: b.x, y: b.y, w: b.w, h: b.h }; });
 
     const move = (ev) => {
       const w = screenToWorld(ev.clientX, ev.clientY);
       let dx = w.x - startWorld.x;
       let dy = w.y - startWorld.y;
 
-      // Snapping
+      // Snapping — align the moving selection's bbox edges to sibling edges.
       const snapLines = [];
-      if (originals.length === 1 && !ev.altKey) {
-        const o = originals[0];
-        const moved = { x: o.x + dx, y: o.y + dy, w: o.w, h: o.h };
-        const edgesX = [moved.x, moved.x + moved.w / 2, moved.x + moved.w];
-        const edgesY = [moved.y, moved.y + moved.h / 2, moved.y + moved.h];
+      if (!ev.altKey && startBBox && snapOthers.length) {
+        const bx1 = startBBox.x1 + dx, by1 = startBBox.y1 + dy;
+        const bx2 = startBBox.x2 + dx, by2 = startBBox.y2 + dy;
+        const edgesX = [bx1, (bx1 + bx2) / 2, bx2];
+        const edgesY = [by1, (by1 + by2) / 2, by2];
         let bestX = null, bestY = null;
-        others.forEach(o2 => {
+        snapOthers.forEach(o2 => {
           const tEx = [o2.x, o2.x + o2.w / 2, o2.x + o2.w];
           const tEy = [o2.y, o2.y + o2.h / 2, o2.y + o2.h];
-          edgesX.forEach((v, i) => tEx.forEach(t => {
+          edgesX.forEach(v => tEx.forEach(t => {
             const diff = t - v;
-            if (Math.abs(diff) * zoom < SNAP_PX && (!bestX || Math.abs(diff) < Math.abs(bestX.diff))) {
-              bestX = { diff, at: t };
-            }
+            if (Math.abs(diff) * zoom < SNAP_PX && (!bestX || Math.abs(diff) < Math.abs(bestX.diff))) bestX = { diff, at: t };
           }));
-          edgesY.forEach((v, i) => tEy.forEach(t => {
+          edgesY.forEach(v => tEy.forEach(t => {
             const diff = t - v;
-            if (Math.abs(diff) * zoom < SNAP_PX && (!bestY || Math.abs(diff) < Math.abs(bestY.diff))) {
-              bestY = { diff, at: t };
-            }
+            if (Math.abs(diff) * zoom < SNAP_PX && (!bestY || Math.abs(diff) < Math.abs(bestY.diff))) bestY = { diff, at: t };
           }));
         });
         if (bestX) { dx += bestX.diff; snapLines.push({ type: "v", at: bestX.at }); }
